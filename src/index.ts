@@ -99,13 +99,8 @@ export const getCodec = <A extends Sum.AnyMember>(
     (x, ctx) =>
       pipe(
         O.tryCatch(() =>
-          pipe(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            x as any as A,
-            Sum.serialize,
-            Sum.deserialize<A>(),
-            Sum.serialize,
-          ),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          Sum.serialize(x as any as A),
         ),
         O.match(
           () => t.failure<Serialized<A>>(x, ctx),
