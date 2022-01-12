@@ -20,7 +20,7 @@ describe("index", () => {
   describe("getSerializedCodec", () => {
     const f = getSerializedCodec<S>({
       A: t.number,
-      B: t.undefined,
+      B: t.null,
       C: t.string,
     })
 
@@ -31,7 +31,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(pipe(B(), Sum.serialize, f.encode)).toEqual(["B", undefined])
+      expect(pipe(B(), Sum.serialize, f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.string(), x =>
@@ -45,14 +45,14 @@ describe("index", () => {
     })
 
     it("does not decode bad values", () => {
-      expect(pipe(f.decode(["B", null]), E.isLeft)).toBe(true)
+      expect(pipe(f.decode(["B", undefined]), E.isLeft)).toBe(true)
       expect(pipe(f.decode(["B", 123]), E.isLeft)).toBe(true)
 
       expect(pipe(f.decode(["A", "bad val"]), E.isLeft)).toBe(true)
     })
 
     it("decodes good key/value pairs", () => {
-      expect(f.decode(["B", undefined])).toEqual(E.right(["B", undefined]))
+      expect(f.decode(["B", null])).toEqual(E.right(["B", null]))
 
       fc.assert(
         fc.property(fc.integer(), n =>
@@ -88,7 +88,7 @@ describe("index", () => {
   describe("getCodecFromSerialized", () => {
     const f = getCodecFromSerialized<S>({
       A: t.number,
-      B: t.undefined,
+      B: t.null,
       C: t.string,
     })
 
@@ -99,7 +99,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(pipe(B(), f.encode)).toEqual(["B", undefined])
+      expect(pipe(B(), f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.string(), x =>
@@ -128,7 +128,7 @@ describe("index", () => {
       const mx = f.decode(pipe(B(), Sum.serialize))
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
-      expect(Sum.serialize(x)).toEqual(["B", undefined])
+      expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), n =>
@@ -141,7 +141,7 @@ describe("index", () => {
   describe("getCodec", () => {
     const f = getCodec<S>({
       A: t.number,
-      B: t.undefined,
+      B: t.null,
       C: t.string,
     })
 
@@ -155,7 +155,7 @@ describe("index", () => {
       // Can't `toEqual` on B for some reason, but we can test its equivalence
       // by proxy
       const x = f.encode(B())
-      expect(Sum.serialize(x)).toEqual(["B", undefined])
+      expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.string(), x => expect(f.encode(C(x))).toEqual(C(x))),
@@ -182,7 +182,7 @@ describe("index", () => {
       const mx = f.decode(B())
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
-      expect(Sum.serialize(x)).toEqual(["B", undefined])
+      expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), n =>
