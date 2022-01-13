@@ -28,8 +28,8 @@ type Serialized<A> = A extends Sum.AnyMember
  * An object from member tags to codecs of their values.
  *
  * We require codecs for members without values as well as we need all the keys
- * to be present at runtime, and taking `t.undefined` is more consistent and
- * less magical than any alternative.
+ * to be present at runtime, and taking `t.null` is more consistent and less
+ * magical than any alternative.
  */
 type MemberCodecs<A extends Sum.AnyMember> = {
   readonly [B in A as Tag<B>]: t.Type<Value<B>>
