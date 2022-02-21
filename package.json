@@ -1,7 +1,7 @@
 {
   "name": "@unsplash/sum-types-io-ts",
   "description": "io-ts bindings for @unsplash/sum-types.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "author": "Unsplash",
   "repository": {
