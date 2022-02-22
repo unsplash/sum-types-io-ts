@@ -1,5 +1,9 @@
 /* eslint-disable functional/functional-parameters */
 
+// Beware that `toEqual` and friends don't play very nicely with sum types as
+// they use `Proxy` under the hood, thus we should instead test against
+// their serialized forms.
+
 import fc from "fast-check"
 import * as Sum from "@unsplash/sum-types"
 import {
@@ -123,8 +127,6 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      // Can't `toEqual` on B for some reason, but we can test its equivalence
-      // by proxy
       const mx = f.decode(pipe(B(), Sum.serialize))
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
@@ -152,8 +154,6 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      // Can't `toEqual` on B for some reason, but we can test its equivalence
-      // by proxy
       const x = f.encode(B())
       expect(Sum.serialize(x)).toEqual(["B", null])
 
@@ -177,8 +177,6 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      // Can't `toEqual` on B for some reason, but we can test its equivalence
-      // by proxy
       const mx = f.decode(B())
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
