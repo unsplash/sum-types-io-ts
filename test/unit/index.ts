@@ -10,6 +10,7 @@ import {
   getSerializedCodec,
   getCodecFromSerialized,
   getCodec,
+  getCodecFromNullaryTag,
 } from "../../src/index"
 import * as t from "io-ts"
 import { flow, pipe } from "fp-ts/function"
@@ -186,6 +187,40 @@ describe("index", () => {
         fc.property(fc.integer(), n =>
           expect(f.decode(A(n))).toEqual(E.right(A(n))),
         ),
+      )
+    })
+  })
+
+  describe("getCodecFromNullaryTag", () => {
+    type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const {
+      mk: { NA, NB },
+    } = Sum.create<NS>()
+    const c = getCodecFromNullaryTag<NS>()(["NA", "NB"])
+
+    it("type guards", () => {
+      expect(c.is(NA())).toBe(true)
+      expect(c.is("NA")).toBe(false)
+      expect(c.is({})).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(NA())).toEqual("NA")
+      expect(c.encode(NB())).toEqual("NB")
+    })
+
+    it("does not decode unknown tag", () => {
+      expect(pipe(c.decode("bad"), E.isLeft)).toBe(true)
+    })
+
+    it("does not decode nonsense", () => {
+      expect(pipe(c.decode({}), E.isLeft)).toBe(true)
+      expect(pipe(c.decode(["NA", null]), E.isLeft)).toBe(true)
+    })
+
+    it("decodes known tag", () => {
+      expect(pipe(c.decode("NA"), E.map(Sum.serialize))).toEqual(
+        E.right(["NA", null]),
       )
     })
   })

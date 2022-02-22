@@ -12,6 +12,7 @@ import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
 import { toArray } from "fp-ts/Record"
 import { mapFst } from "fp-ts/Tuple"
+import { Refinement } from "fp-ts/Refinement"
 
 // We must add the `any` type argument or it won't distribute over unions for
 // some reason.
@@ -19,6 +20,8 @@ import { mapFst } from "fp-ts/Tuple"
 type Tag<A> = A extends Sum.Member<infer B, any> ? B : never
 type Value<A> = A extends Sum.Member<any, infer B> ? B : never
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+type NullaryMember = Sum.Member<string>
 
 /**
  * An object from member tags to codecs of their values.
@@ -108,3 +111,47 @@ export const getCodec = <A extends Sum.AnyMember>(
     t.identity,
   )
 }
+
+/**
+ * Ensures that every key in union `A` is present at least once in array `B`.
+ *
+ * @link https://github.com/Microsoft/TypeScript/issues/13298#issuecomment-468733257
+ */
+type EveryKeyPresent<A, B> = Array<A> extends B
+  ? B extends Array<A>
+    ? B
+    : never
+  : never
+
+/**
+ * Derive a codec for any given sum `A` in which all the constructors are
+ * nullary, decoding and encoding to/from the constructor tags.
+ *
+ * @since 0.3.0
+ */
+export const getCodecFromNullaryTag =
+  <A extends NullaryMember>() =>
+  <B>(
+    tags: EveryKeyPresent<Tag<A>, B>,
+    name = "Sum Tag",
+  ): t.Type<A, string> => {
+    const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
+      tags.includes(x as Tag<A>)
+
+    return new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          O.tryCatch(() => Sum.serialize<A>(x as any)),
+          O.match(constant(false), y => isKnownTag(y[0]) && y[1] === null),
+        ),
+      (x, ctx) =>
+        isKnownTag(x)
+          ? t.success(
+              Sum.deserialize<A>()([x, null] as unknown as Sum.Serialized<A>),
+            )
+          : t.failure(x, ctx),
+      flow(Sum.serialize, x => x[0]),
+    )
+  }
