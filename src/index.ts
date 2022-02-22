@@ -20,10 +20,6 @@ type Tag<A> = A extends Sum.Member<infer B, any> ? B : never
 type Value<A> = A extends Sum.Member<any, infer B> ? B : never
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-type Serialized<A> = A extends Sum.AnyMember
-  ? readonly [Tag<A>, Value<A>]
-  : never
-
 /**
  * An object from member tags to codecs of their values.
  *
@@ -44,12 +40,12 @@ type MemberCodecs<A extends Sum.AnyMember> = {
 export const getSerializedCodec = <A extends Sum.AnyMember>(
   cs: MemberCodecs<A>,
   name = "Serialized Sum",
-): t.Type<Serialized<A>> =>
+): t.Type<Sum.Serialized<A>> =>
   pipe(
     toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
     A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
     ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
-  ) as unknown as t.Type<Serialized<A>>
+  ) as unknown as t.Type<Sum.Serialized<A>>
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -60,7 +56,7 @@ export const getSerializedCodec = <A extends Sum.AnyMember>(
 export const getCodecFromSerialized = <A extends Sum.AnyMember>(
   cs: MemberCodecs<A>,
   name = "Sum",
-): t.Type<A, Serialized<A>> => {
+): t.Type<A, Sum.Serialized<A>> => {
   const sc = getSerializedCodec(cs, name)
 
   return new t.Type(
@@ -72,7 +68,7 @@ export const getCodecFromSerialized = <A extends Sum.AnyMember>(
         O.match(constant(false), sc.is),
       ),
     flow(sc.validate, E.map(Sum.deserialize<A>())),
-    flow(Sum.serialize, x => sc.encode(x as Serialized<A>)),
+    flow(Sum.serialize, x => sc.encode(x)),
   )
 }
 
@@ -103,8 +99,8 @@ export const getCodec = <A extends Sum.AnyMember>(
           Sum.serialize(x as any as A),
         ),
         O.match(
-          () => t.failure<Serialized<A>>(x, ctx),
-          y => t.success(y as Serialized<A>),
+          () => t.failure<Sum.Serialized<A>>(x, ctx),
+          y => t.success(y),
         ),
         E.chain(y => sc.validate(y, ctx)),
         E.map(constant(x as A)),
