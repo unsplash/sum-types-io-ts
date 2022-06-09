@@ -125,16 +125,46 @@ type EveryKeyPresent<A, B> = Array<A> extends B
 
 /**
  * Derive a codec for any given sum `A` in which all the constructors are
- * nullary, decoding and encoding to/from the constructor tags.
+ * nullary, decoding and encoding to/from the constructor tags via conversion
+ * functions. Useful for working with stringly APIs.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { getCodecFromMappedNullaryTag } from "@unsplash/sum-types-io-ts"
+ * import * as O from "fp-ts/Option"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
+ * const Weather = Sum.create<Weather>()
+ * type Country = "UK" | "Italy"
+ *
+ * const WeatherFromCountry: t.Type<Weather, Country> =
+ *   getCodecFromMappedNullaryTag<Weather>()<Country>(
+ *     x => {
+ *       switch (x) {
+ *         case "Italy":
+ *           return O.some("Sun")
+ *         case "UK":
+ *           return O.some("Rain")
+ *         default:
+ *           return O.none
+ *       }
+ *     },
+ *     x => (x === "Sun" ? "Italy" : "UK"),
+ *   )(["Sun", "Rain"])
+ *
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
  *
  * @since 0.3.0
  */
-export const getCodecFromNullaryTag =
+export const getCodecFromMappedNullaryTag =
   <A extends NullaryMember>() =>
-  <B>(
-    tags: EveryKeyPresent<Tag<A>, B>,
-    name = "Sum Tag",
-  ): t.Type<A, string> => {
+  <B>(from: (x: unknown) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
+  <C>(
+    tags: EveryKeyPresent<Tag<A>, C>,
+    name = "Sum Mapped Tag",
+  ): t.Type<A, B> => {
     const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
       tags.includes(x as Tag<A>)
 
@@ -147,11 +177,32 @@ export const getCodecFromNullaryTag =
           O.match(constant(false), y => isKnownTag(y[0]) && y[1] === null),
         ),
       (x, ctx) =>
-        isKnownTag(x)
-          ? t.success(
-              Sum.deserialize<A>()([x, null] as unknown as Sum.Serialized<A>),
-            )
-          : t.failure(x, ctx),
-      flow(Sum.serialize, x => x[0]),
+        pipe(
+          x,
+          from,
+          O.match(
+            () => t.failure(x, ctx),
+            k =>
+              t.success(
+                Sum.deserialize<A>()([k, null] as unknown as Sum.Serialized<A>),
+              ),
+          ),
+        ),
+      flow(Sum.serialize, x => x[0] as Tag<A>, to),
     )
   }
+
+/**
+ * Derive a codec for any given sum `A` in which all the constructors are
+ * nullary, decoding and encoding to/from the constructor tags.
+ *
+ * @since 0.3.0
+ */
+export const getCodecFromNullaryTag =
+  <A extends NullaryMember>() =>
+  <B>(tags: EveryKeyPresent<Tag<A>, B>, name = "Sum Tag"): t.Type<A, string> =>
+    getCodecFromMappedNullaryTag<A>()(
+      x =>
+        (tags as Array<unknown>).includes(x) ? O.some(x as Tag<A>) : O.none,
+      x => x as string,
+    )(tags, name)

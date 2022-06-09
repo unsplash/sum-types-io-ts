@@ -14,6 +14,7 @@ Added in v0.1.0
 
 - [utils](#utils)
   - [getCodec](#getcodec)
+  - [getCodecFromMappedNullaryTag](#getcodecfrommappednullarytag)
   - [getCodecFromNullaryTag](#getcodecfromnullarytag)
   - [getCodecFromSerialized](#getcodecfromserialized)
   - [getSerializedCodec](#getserializedcodec)
@@ -34,6 +35,53 @@ export declare const getCodec: <A extends Sum.AnyMember>(cs: MemberCodecs<A>, na
 ```
 
 Added in v0.1.0
+
+## getCodecFromMappedNullaryTag
+
+Derive a codec for any given sum `A` in which all the constructors are
+nullary, decoding and encoding to/from the constructor tags via conversion
+functions. Useful for working with stringly APIs.
+
+**Signature**
+
+```ts
+export declare const getCodecFromMappedNullaryTag: <A extends NullaryMember>() => <B>(
+  from: (x: unknown) => O.Option<Tag<A>>,
+  to: (x: Tag<A>) => B
+) => <C>(tags: EveryKeyPresent<Tag<A>, C>, name?: string) => t.Type<A, B, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import * as Sum from '@unsplash/sum-types'
+import { getCodecFromMappedNullaryTag } from '@unsplash/sum-types-io-ts'
+import * as O from 'fp-ts/Option'
+import * as E from 'fp-ts/Either'
+
+type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
+const Weather = Sum.create<Weather>()
+type Country = 'UK' | 'Italy'
+
+const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTag<Weather>()<Country>(
+  (x) => {
+    switch (x) {
+      case 'Italy':
+        return O.some('Sun')
+      case 'UK':
+        return O.some('Rain')
+      default:
+        return O.none
+    }
+  },
+  (x) => (x === 'Sun' ? 'Italy' : 'UK')
+)(['Sun', 'Rain'])
+
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain()))
+```
+
+Added in v0.3.0
 
 ## getCodecFromNullaryTag
 

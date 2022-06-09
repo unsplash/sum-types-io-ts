@@ -10,10 +10,12 @@ import {
   getSerializedCodec,
   getCodecFromSerialized,
   getCodec,
+  getCodecFromMappedNullaryTag,
   getCodecFromNullaryTag,
 } from "../../src/index"
 import * as t from "io-ts"
 import { flow, pipe } from "fp-ts/function"
+import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
 
 describe("index", () => {
@@ -187,6 +189,43 @@ describe("index", () => {
         fc.property(fc.integer(), n =>
           expect(f.decode(A(n))).toEqual(E.right(A(n))),
         ),
+      )
+    })
+  })
+
+  describe("getCodecFromMappedNullaryTag", () => {
+    type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const {
+      mk: { NA, NB },
+    } = Sum.create<NS>()
+    const c = getCodecFromMappedNullaryTag<NS>()(
+      x => (x === 1 ? O.some("NA") : x === 2 ? O.some("NB") : O.none),
+      x => (x === "NA" ? 1 : 2),
+    )(["NA", "NB"])
+
+    it("type guards", () => {
+      expect(c.is(NA())).toBe(true)
+      expect(c.is("NA")).toBe(false)
+      expect(c.is({})).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(NA())).toEqual(1)
+      expect(c.encode(NB())).toEqual(2)
+    })
+
+    it("does not decode tag, ignoring transformation function", () => {
+      expect(pipe(c.decode("NA"), E.isLeft)).toBe(true)
+    })
+
+    it("does not decode nonsense", () => {
+      expect(pipe(c.decode({}), E.isLeft)).toBe(true)
+      expect(pipe(c.decode(["NA", null]), E.isLeft)).toBe(true)
+    })
+
+    it("decodes according to transformation function", () => {
+      expect(pipe(c.decode(1), E.map(Sum.serialize))).toEqual(
+        E.right(["NA", null]),
       )
     })
   })
