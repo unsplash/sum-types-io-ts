@@ -10,7 +10,7 @@ import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
-import { toArray } from "fp-ts/Record"
+import * as R from "fp-ts/Record"
 import { mapFst } from "fp-ts/Tuple"
 import { Refinement } from "fp-ts/Refinement"
 
@@ -45,7 +45,7 @@ export const getSerializedCodec = <A extends Sum.AnyMember>(
   name = "Serialized Sum",
 ): t.Type<Sum.Serialized<A>> =>
   pipe(
-    toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
+    R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
     A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
     ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
   ) as unknown as t.Type<Sum.Serialized<A>>
