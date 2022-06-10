@@ -11,6 +11,7 @@ import {
   getCodecFromSerialized,
   getCodec,
   getCodecFromMappedNullaryTag,
+  getCodecFromStringlyMappedNullaryTag,
   getCodecFromNullaryTag,
 } from "../../src/index"
 import * as t from "io-ts"
@@ -225,6 +226,41 @@ describe("index", () => {
 
     it("decodes according to transformation function", () => {
       expect(pipe(c.decode(1), E.map(Sum.serialize))).toEqual(
+        E.right(["NA", null]),
+      )
+    })
+  })
+
+  describe("getCodecFromStringlyMappedNullaryTag", () => {
+    type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const {
+      mk: { NA, NB },
+    } = Sum.create<NS>()
+    const c = getCodecFromStringlyMappedNullaryTag<NS>()({ NA: "1", NB: "2" })
+
+    it("type guards", () => {
+      expect(c.is(NA())).toBe(true)
+      expect(c.is("NA")).toBe(false)
+      expect(c.is({})).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(NA())).toEqual("1")
+      expect(c.encode(NB())).toEqual("2")
+    })
+
+    it("does not decode tag, ignoring transformation function", () => {
+      expect(pipe(c.decode("NA"), E.isLeft)).toBe(true)
+    })
+
+    it("does not decode nonsense", () => {
+      expect(pipe(c.decode({}), E.isLeft)).toBe(true)
+      expect(pipe(c.decode(1), E.isLeft)).toBe(true)
+      expect(pipe(c.decode(["NA", null]), E.isLeft)).toBe(true)
+    })
+
+    it("decodes according to transformation function", () => {
+      expect(pipe(c.decode("1"), E.map(Sum.serialize))).toEqual(
         E.right(["NA", null]),
       )
     })
