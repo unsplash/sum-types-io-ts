@@ -1,8 +1,14 @@
 /* eslint-disable functional/functional-parameters, functional/no-expression-statement, @typescript-eslint/no-unused-vars */
 
 import * as Sum from "@unsplash/sum-types"
-import { getCodecFromSerialized, getCodecFromNullaryTag } from "../../src/index"
+import {
+  getCodecFromSerialized,
+  getCodecFromMappedNullaryTag,
+  getCodecFromNullaryTag,
+} from "../../src/index"
 import * as t from "io-ts"
+import { constant } from "fp-ts/function"
+import * as O from "fp-ts/Option"
 
 type A = Sum.Member<"A1"> | Sum.Member<"A2", number>
 
@@ -13,6 +19,16 @@ getCodecFromSerialized<A>({ A2: t.number }) // $ExpectError
 getCodecFromSerialized<A>({ A1: t.null }) // $ExpectError
 
 type B = Sum.Member<"B1"> | Sum.Member<"B2">
+
+const getCodecFromMappedNullaryTagPA = getCodecFromMappedNullaryTag<B>()(
+  constant(O.none),
+  constant("foo"),
+)
+getCodecFromMappedNullaryTagPA([]) // $ExpectError
+getCodecFromMappedNullaryTagPA(["B1"]) // $ExpectError
+getCodecFromMappedNullaryTagPA(["B2"]) // $ExpectError
+getCodecFromMappedNullaryTagPA(["B1", "B1"]) // $ExpectError
+getCodecFromMappedNullaryTagPA(["B1", "B2"]) // $ExpectType Type<B, string, unknown>
 
 getCodecFromNullaryTag<B>()([]) // $ExpectError
 getCodecFromNullaryTag<B>()(["B1"]) // $ExpectError

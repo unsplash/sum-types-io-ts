@@ -10,7 +10,8 @@ import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
-import { toArray } from "fp-ts/Record"
+import * as R from "fp-ts/Record"
+import * as Str from "fp-ts/string"
 import { mapFst } from "fp-ts/Tuple"
 import { Refinement } from "fp-ts/Refinement"
 
@@ -45,7 +46,7 @@ export const getSerializedCodec = <A extends Sum.AnyMember>(
   name = "Serialized Sum",
 ): t.Type<Sum.Serialized<A>> =>
   pipe(
-    toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
+    R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
     A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
     ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
   ) as unknown as t.Type<Sum.Serialized<A>>
@@ -125,16 +126,47 @@ type EveryKeyPresent<A, B> = Array<A> extends B
 
 /**
  * Derive a codec for any given sum `A` in which all the constructors are
- * nullary, decoding and encoding to/from the constructor tags.
+ * nullary, decoding and encoding to/from the constructor tags via conversion
+ * functions. Consider instead `getCodecFromStringlyMappedNullaryTag` for
+ * stringly APIs.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { getCodecFromMappedNullaryTag } from "@unsplash/sum-types-io-ts"
+ * import * as O from "fp-ts/Option"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
+ * const Weather = Sum.create<Weather>()
+ * type Country = "UK" | "Italy"
+ *
+ * const WeatherFromCountry: t.Type<Weather, Country> =
+ *   getCodecFromMappedNullaryTag<Weather>()<Country>(
+ *     x => {
+ *       switch (x) {
+ *         case "Italy":
+ *           return O.some("Sun")
+ *         case "UK":
+ *           return O.some("Rain")
+ *         default:
+ *           return O.none
+ *       }
+ *     },
+ *     x => (x === "Sun" ? "Italy" : "UK"),
+ *   )(["Sun", "Rain"])
+ *
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
  *
  * @since 0.3.0
  */
-export const getCodecFromNullaryTag =
+export const getCodecFromMappedNullaryTag =
   <A extends NullaryMember>() =>
-  <B>(
-    tags: EveryKeyPresent<Tag<A>, B>,
-    name = "Sum Tag",
-  ): t.Type<A, string> => {
+  <B>(from: (x: unknown) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
+  <C>(
+    tags: EveryKeyPresent<Tag<A>, C>,
+    name = "Sum Mapped Tag",
+  ): t.Type<A, B> => {
     const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
       tags.includes(x as Tag<A>)
 
@@ -147,11 +179,78 @@ export const getCodecFromNullaryTag =
           O.match(constant(false), y => isKnownTag(y[0]) && y[1] === null),
         ),
       (x, ctx) =>
-        isKnownTag(x)
-          ? t.success(
-              Sum.deserialize<A>()([x, null] as unknown as Sum.Serialized<A>),
-            )
-          : t.failure(x, ctx),
-      flow(Sum.serialize, x => x[0]),
+        pipe(
+          x,
+          from,
+          O.match(
+            () => t.failure(x, ctx),
+            k =>
+              t.success(
+                Sum.deserialize<A>()([k, null] as unknown as Sum.Serialized<A>),
+              ),
+          ),
+        ),
+      flow(Sum.serialize, x => x[0] as Tag<A>, to),
     )
   }
+
+/**
+ * A convenient alternative to `getCodecFromMappedNullaryTag` for working with
+ * stringly APIs. The behaviour is unspecified if the input `Record` contains
+ * duplicate values.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { getCodecFromStringlyMappedNullaryTag } from "@unsplash/sum-types-io-ts"
+ * import * as O from "fp-ts/Option"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
+ * const Weather = Sum.create<Weather>()
+ * type Country = "UK" | "Italy"
+ *
+ * const WeatherFromCountry: t.Type<Weather, Country> =
+ *   getCodecFromStringlyMappedNullaryTag<Weather>()({ Sun: "Italy", Rain: "UK" })
+ *
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
+ *
+ * @since 0.3.0
+ **/
+export const getCodecFromStringlyMappedNullaryTag =
+  <A extends NullaryMember>() =>
+  <B extends string>(
+    tos: Record<Tag<A>, B>,
+    name = "Sum Stringly Mapped Tag",
+  ): t.Type<A, B> => {
+    const froms = pipe(
+      tos,
+      R.reduceWithIndex(Str.Ord)({} as Record<B, Tag<A>>, (k, xs, v) =>
+        R.upsertAt(v, k)(xs),
+      ),
+    )
+
+    return getCodecFromMappedNullaryTag<A>()(
+      x => (typeof x === "string" ? R.lookup(x)(froms) : O.none),
+      x => tos[x],
+    )(Object.keys(tos) as Array<Tag<A>>, name)
+  }
+
+/**
+ * Derive a codec for any given sum `A` in which all the constructors are
+ * nullary, decoding and encoding to/from the constructor tags.
+ *
+ * @since 0.3.0
+ */
+export const getCodecFromNullaryTag =
+  <A extends NullaryMember>() =>
+  <B>(tags: EveryKeyPresent<Tag<A>, B>, name = "Sum Tag"): t.Type<A, string> =>
+    getCodecFromStringlyMappedNullaryTag<A>()(
+      pipe(
+        tags,
+        A.reduce({} as Record<Tag<A>, string>, (xs, y) =>
+          R.upsertAt(y, y as string)(xs),
+        ),
+      ),
+      name,
+    )
