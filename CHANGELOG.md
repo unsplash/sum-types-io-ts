@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.3.0 (2022-06-13)
+
+Add `getCodecFromNullaryTag`, `getCodecFromStringlyMappedNullaryTag`, and `getCodecFromMappedNullaryTag` codec constructors.
+
 ## 0.2.1 (2022-02-21)
 
 Add ESM support.
