@@ -12,11 +12,11 @@ import * as O from "fp-ts/Option"
 
 type A = Sum.Member<"A1"> | Sum.Member<"A2", number>
 
-getCodecFromSerialized<A>({ A1: t.null, A2: t.number }) // $ExpectType Type<A, readonly ["A1", null] | readonly ["A2", number], unknown>
-getCodecFromSerialized<A>({ A1: t.string, A2: t.number }) // $ExpectError
-getCodecFromSerialized<A>({ A1: t.undefined, A2: t.number }) // $ExpectError
-getCodecFromSerialized<A>({ A2: t.number }) // $ExpectError
-getCodecFromSerialized<A>({ A1: t.null }) // $ExpectError
+getCodecFromSerialized<A>()({ A1: t.null, A2: t.number }) // $ExpectType Type<A, readonly ["A1", null] | readonly ["A2", number], unknown>
+getCodecFromSerialized<A>()({ A1: t.string, A2: t.number }) // $ExpectError
+getCodecFromSerialized<A>()({ A1: t.undefined, A2: t.number }) // $ExpectError
+getCodecFromSerialized<A>()({ A2: t.number }) // $ExpectError
+getCodecFromSerialized<A>()({ A1: t.null }) // $ExpectError
 
 type B = Sum.Member<"B1"> | Sum.Member<"B2">
 

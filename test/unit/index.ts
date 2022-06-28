@@ -18,32 +18,50 @@ import * as t from "io-ts"
 import { flow, pipe } from "fp-ts/function"
 import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
+import { NumberFromString } from "io-ts-types"
 
 describe("index", () => {
-  type S = Sum.Member<"A", number> | Sum.Member<"B"> | Sum.Member<"C", string>
+  type Nested = Sum.Member<"Nested", number>
+  const {
+    mk: { Nested },
+  } = Sum.create<Nested>()
+
+  type S = Sum.Member<"A", number> | Sum.Member<"B"> | Sum.Member<"C", Nested>
   const {
     mk: { A, B, C },
   } = Sum.create<S>()
 
   describe("getSerializedCodec", () => {
-    const f = getSerializedCodec<S>({
-      A: t.number,
+    const nested = getCodecFromSerialized<Nested>()({
+      Nested: t.number,
+    })
+    const f: t.Type<
+      readonly ["A", number] | readonly ["B", null] | readonly ["C", Nested],
+      | readonly ["A", string]
+      | readonly ["B", null]
+      | readonly ["C", readonly ["Nested", number]],
+      unknown
+    > = getSerializedCodec<S>()({
+      A: NumberFromString,
       B: t.null,
-      C: t.string,
+      C: nested,
     })
 
     it("type guards", () => {
       expect(pipe(B(), Sum.serialize, f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.string(), flow(C, Sum.serialize, f.is)))
+      fc.assert(fc.property(fc.integer(), flow(Nested, C, Sum.serialize, f.is)))
     })
 
     it("encodes", () => {
       expect(pipe(B(), Sum.serialize, f.encode)).toEqual(["B", null])
 
       fc.assert(
-        fc.property(fc.string(), x =>
-          expect(pipe(x, C, Sum.serialize, f.encode)).toEqual(["C", x]),
+        fc.property(fc.integer(), x =>
+          expect(pipe(x, Nested, C, Sum.serialize, f.encode)).toEqual([
+            "C",
+            ["Nested", x],
+          ]),
         ),
       )
     })
@@ -64,7 +82,7 @@ describe("index", () => {
 
       fc.assert(
         fc.property(fc.integer(), n =>
-          expect(f.decode(["A", n])).toEqual(E.right(["A", n])),
+          expect(f.decode(["A", n.toString()])).toEqual(E.right(["A", n])),
         ),
       )
     })
@@ -76,7 +94,7 @@ describe("index", () => {
       const {
         mk: { X },
       } = Sum.create<X>()
-      const f = getSerializedCodec<X>({ X: t.number })
+      const f = getSerializedCodec<X>()({ X: t.number })
       const good = ["X", 123] as const
       const badKey = ["bad key", 123] as const
       const badVal = ["X", "bad val"] as const
@@ -94,24 +112,33 @@ describe("index", () => {
   })
 
   describe("getCodecFromSerialized", () => {
-    const f = getCodecFromSerialized<S>({
-      A: t.number,
+    const nested = getCodecFromSerialized<Nested>()({
+      Nested: t.number,
+    })
+    const f: t.Type<
+      S,
+      | readonly ["A", string]
+      | readonly ["B", null]
+      | readonly ["C", readonly ["Nested", number]],
+      unknown
+    > = getCodecFromSerialized<S>()({
+      A: NumberFromString,
       B: t.null,
-      C: t.string,
+      C: nested,
     })
 
     it("type guards", () => {
       expect(pipe(B(), f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.string(), flow(C, f.is)))
+      fc.assert(fc.property(fc.integer(), flow(Nested, C, f.is)))
     })
 
     it("encodes", () => {
       expect(pipe(B(), f.encode)).toEqual(["B", null])
 
       fc.assert(
-        fc.property(fc.string(), x =>
-          expect(pipe(x, C, f.encode)).toEqual(["C", x]),
+        fc.property(fc.integer(), x =>
+          expect(pipe(x, Nested, C, f.encode)).toEqual(["C", ["Nested", x]]),
         ),
       )
     })
@@ -137,24 +164,28 @@ describe("index", () => {
       expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
-        fc.property(fc.integer(), n =>
-          expect(f.decode(pipe(n, A, Sum.serialize))).toEqual(E.right(A(n))),
-        ),
+        fc.property(fc.integer(), n => {
+          return expect(f.decode(["A", n.toString()])).toEqual(E.right(A(n)))
+        }),
       )
     })
   })
 
   describe("getCodec", () => {
+    const nested = getCodecFromSerialized<Nested>()({
+      Nested: t.number,
+    })
     const f = getCodec<S>({
-      A: t.number,
+      // TODO: fix tests, or prevent this
+      A: NumberFromString,
       B: t.null,
-      C: t.string,
+      C: nested,
     })
 
     it("type guards", () => {
       expect(pipe(B(), f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.string(), flow(C, f.is)))
+      fc.assert(fc.property(fc.integer(), flow(Nested, C, f.is)))
     })
 
     it("encodes", () => {
@@ -162,7 +193,9 @@ describe("index", () => {
       expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
-        fc.property(fc.string(), x => expect(f.encode(C(x))).toEqual(C(x))),
+        fc.property(fc.integer(), x =>
+          expect(f.encode(C(Nested(x)))).toEqual(C(Nested(x))),
+        ),
       )
     })
 

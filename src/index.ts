@@ -32,8 +32,16 @@ type NullaryMember = Sum.Member<string>
  * magical than any alternative.
  */
 type MemberCodecs<A extends Sum.AnyMember> = {
-  readonly [B in A as Tag<B>]: t.Type<Value<B>>
+  readonly [B in A as Tag<B>]: t.Type<Value<B>, unknown>
 }
+
+type OutputsOf<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Sum.Member<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
+  : never
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
@@ -41,15 +49,17 @@ type MemberCodecs<A extends Sum.AnyMember> = {
  *
  * @since 0.1.0
  */
-export const getSerializedCodec = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Serialized Sum",
-): t.Type<Sum.Serialized<A>> =>
-  pipe(
-    R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
-    A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
-    ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
-  ) as unknown as t.Type<Sum.Serialized<A>>
+export const getSerializedCodec =
+  <A extends Sum.AnyMember>() =>
+  <CS extends MemberCodecs<A>>(
+    cs: CS,
+    name = "Serialized Sum",
+  ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>> =>
+    pipe(
+      R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
+      A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
+      ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
+    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>>
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -57,24 +67,26 @@ export const getSerializedCodec = <A extends Sum.AnyMember>(
  *
  * @since 0.1.0
  */
-export const getCodecFromSerialized = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Sum",
-): t.Type<A, Sum.Serialized<A>> => {
-  const sc = getSerializedCodec(cs, name)
+export const getCodecFromSerialized =
+  <A extends Sum.AnyMember>() =>
+  <CS extends MemberCodecs<A>>(
+    cs: CS,
+    name = "Sum",
+  ): t.Type<A, Sum.Serialized<OutputsOf<A, CS>>> => {
+    const sc = getSerializedCodec<A>()(cs, name)
 
-  return new t.Type(
-    name,
-    (x): x is A =>
-      pipe(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        O.tryCatch(() => Sum.serialize<A>(x as any)),
-        O.match(constant(false), sc.is),
-      ),
-    flow(sc.validate, E.map(Sum.deserialize<A>())),
-    flow(Sum.serialize, x => sc.encode(x)),
-  )
-}
+    return new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          O.tryCatch(() => Sum.serialize<A>(x as any)),
+          O.match(constant(false), sc.is),
+        ),
+      flow(sc.validate, E.map(Sum.deserialize<A>())),
+      flow(Sum.serialize, x => sc.encode(x)),
+    )
+  }
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -86,7 +98,7 @@ export const getCodec = <A extends Sum.AnyMember>(
   cs: MemberCodecs<A>,
   name = "Sum",
 ): t.Type<A> => {
-  const sc = getSerializedCodec(cs, name)
+  const sc = getSerializedCodec<A>()(cs, name)
 
   return new t.Type(
     name,
