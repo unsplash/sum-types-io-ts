@@ -56,7 +56,7 @@ export const getSerializedCodec =
     name = "Serialized Sum",
   ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>> =>
     pipe(
-      R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
+      R.toArray(cs),
       A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
       ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
     ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>>
