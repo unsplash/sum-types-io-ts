@@ -175,8 +175,7 @@ describe("index", () => {
     const nested = getCodecFromSerialized<Nested>()({
       Nested: t.number,
     })
-    const f = getCodec<S>({
-      // TODO: fix tests, or prevent this
+    const f = getCodec<S>()({
       A: NumberFromString,
       B: t.null,
       C: nested,
@@ -194,7 +193,10 @@ describe("index", () => {
 
       fc.assert(
         fc.property(fc.integer(), x =>
-          expect(f.encode(C(Nested(x)))).toEqual(C(Nested(x))),
+          expect(f.encode(C(Nested(x)))).toEqual(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            C(Sum.serialize(Nested(x)) as any),
+          ),
         ),
       )
     })
@@ -221,7 +223,7 @@ describe("index", () => {
 
       fc.assert(
         fc.property(fc.integer(), n =>
-          expect(f.decode(A(n))).toEqual(E.right(A(n))),
+          expect(f.decode(f.encode(A(n)))).toEqual(E.right(A(n))),
         ),
       )
     })

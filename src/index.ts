@@ -94,36 +94,37 @@ export const getCodecFromSerialized =
  *
  * @since 0.1.0
  */
-export const getCodec = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Sum",
-): t.Type<A> => {
-  const sc = getSerializedCodec<A>()(cs, name)
+export const getCodec =
+  <A extends Sum.AnyMember>() =>
+  <CS extends MemberCodecs<A>>(
+    cs: CS,
+    name = "Sum",
+  ): t.Type<A, OutputsOf<A, CS>> => {
+    const sc = getSerializedCodec<A>()(cs, name)
 
-  return new t.Type(
-    name,
-    (x): x is A =>
-      pipe(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        O.tryCatch(() => Sum.serialize<A>(x as any)),
-        O.match(constant(false), sc.is),
-      ),
-    (x, ctx) =>
-      pipe(
-        O.tryCatch(() =>
+    return new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize(x as any as A),
+          O.tryCatch(() => Sum.serialize<A>(x as any)),
+          O.match(constant(false), sc.is),
         ),
-        O.match(
-          () => t.failure<Sum.Serialized<A>>(x, ctx),
-          y => t.success(y),
+      (x, ctx) =>
+        pipe(
+          O.tryCatch(() =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            Sum.serialize(x as any as A),
+          ),
+          O.match(
+            () => t.failure<Sum.Serialized<A>>(x, ctx),
+            y => sc.decode(y),
+          ),
+          E.map(Sum.deserialize<A>()),
         ),
-        E.chain(y => sc.validate(y, ctx)),
-        E.map(constant(x as A)),
-      ),
-    t.identity,
-  )
-}
+      flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, CS>>()),
+    )
+  }
 
 /**
  * Ensures that every key in union `A` is present at least once in array `B`.
