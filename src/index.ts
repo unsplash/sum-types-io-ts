@@ -2,7 +2,7 @@
  * @since 0.1.0
  */
 
-/* eslint-disable functional/functional-parameters, functional/prefer-readonly-type */
+/* eslint-disable functional/functional-parameters, functional/prefer-readonly-type, @typescript-eslint/unbound-method */
 
 import * as Sum from "@unsplash/sum-types"
 import { flow, pipe } from "fp-ts/function"
@@ -83,7 +83,7 @@ export const getCodecFromSerialized =
       name,
       (x): x is A => pipe(unknownSerialize(x), sc.is),
       flow(sc.validate, E.map(Sum.deserialize<A>())),
-      flow(Sum.serialize, x => sc.encode(x)),
+      flow(Sum.serialize, sc.encode),
     )
   }
 
@@ -104,12 +104,7 @@ export const getCodec =
     return new t.Type(
       name,
       (x): x is A => pipe(unknownSerialize(x), sc.is),
-      x =>
-        pipe(
-          unknownSerialize(x),
-          y => sc.decode(y),
-          E.map(Sum.deserialize<A>()),
-        ),
+      flow(unknownSerialize, sc.decode, E.map(Sum.deserialize<A>())),
       flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, CS>>()),
     )
   }
