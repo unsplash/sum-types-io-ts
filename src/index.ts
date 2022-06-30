@@ -5,7 +5,7 @@
 /* eslint-disable functional/functional-parameters, functional/prefer-readonly-type */
 
 import * as Sum from "@unsplash/sum-types"
-import { constant, flow, pipe } from "fp-ts/function"
+import { flow, pipe } from "fp-ts/function"
 import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
@@ -80,8 +80,8 @@ export const getCodecFromSerialized =
       (x): x is A =>
         pipe(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          O.tryCatch(() => Sum.serialize<A>(x as any)),
-          O.match(constant(false), sc.is),
+          Sum.serialize<A>(x as any),
+          sc.is,
         ),
       flow(sc.validate, E.map(Sum.deserialize<A>())),
       flow(Sum.serialize, x => sc.encode(x)),
@@ -107,19 +107,14 @@ export const getCodec =
       (x): x is A =>
         pipe(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          O.tryCatch(() => Sum.serialize<A>(x as any)),
-          O.match(constant(false), sc.is),
+          Sum.serialize<A>(x as any),
+          sc.is,
         ),
-      (x, ctx) =>
+      x =>
         pipe(
-          O.tryCatch(() =>
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Sum.serialize(x as any as A),
-          ),
-          O.match(
-            () => t.failure<Sum.Serialized<A>>(x, ctx),
-            y => sc.decode(y),
-          ),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          Sum.serialize(x as any as A),
+          y => sc.decode(y),
           E.map(Sum.deserialize<A>()),
         ),
       flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, CS>>()),
@@ -188,8 +183,8 @@ export const getCodecFromMappedNullaryTag =
       (x): x is A =>
         pipe(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          O.tryCatch(() => Sum.serialize<A>(x as any)),
-          O.match(constant(false), y => isKnownTag(y[0]) && y[1] === null),
+          Sum.serialize<A>(x as any),
+          y => isKnownTag(y[0]) && y[1] === null,
         ),
       (x, ctx) =>
         pipe(
