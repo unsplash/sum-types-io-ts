@@ -43,6 +43,10 @@ type OutputsOf<
     Sum.Member<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
   : never
 
+const unknownSerialize = (x: unknown): readonly [unknown, unknown] =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Sum.serialize(x as any)
+
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
  * all its members` values.
@@ -77,12 +81,7 @@ export const getCodecFromSerialized =
 
     return new t.Type(
       name,
-      (x): x is A =>
-        pipe(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize<A>(x as any),
-          sc.is,
-        ),
+      (x): x is A => pipe(unknownSerialize(x), sc.is),
       flow(sc.validate, E.map(Sum.deserialize<A>())),
       flow(Sum.serialize, x => sc.encode(x)),
     )
@@ -104,16 +103,10 @@ export const getCodec =
 
     return new t.Type(
       name,
-      (x): x is A =>
-        pipe(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize<A>(x as any),
-          sc.is,
-        ),
+      (x): x is A => pipe(unknownSerialize(x), sc.is),
       x =>
         pipe(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize(x as any as A),
+          unknownSerialize(x),
           y => sc.decode(y),
           E.map(Sum.deserialize<A>()),
         ),
@@ -181,11 +174,7 @@ export const getCodecFromMappedNullaryTag =
     return new t.Type(
       name,
       (x): x is A =>
-        pipe(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize<A>(x as any),
-          y => isKnownTag(y[0]) && y[1] === null,
-        ),
+        pipe(unknownSerialize(x), y => isKnownTag(y[0]) && y[1] === null),
       (x, ctx) =>
         pipe(
           x,
