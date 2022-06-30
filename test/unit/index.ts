@@ -194,6 +194,11 @@ describe("index", () => {
       fc.assert(
         fc.property(fc.integer(), x =>
           expect(f.encode(C(Nested(x)))).toEqual(
+            // Fixed type of constructor `C` expects runtime `Nested`, but it
+            // will actually be serialized during encode. This is all typesafe
+            // but we're cheating on types here to avoid having to create a new
+            // `C` constructor that takes `Serialized<Nested>` instead of just
+            // `Nested`.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             C(Sum.serialize(Nested(x)) as any),
           ),
