@@ -55,15 +55,15 @@ const unknownSerialize = (x: unknown): readonly [unknown, unknown] =>
  */
 export const getSerializedCodec =
   <A extends Sum.AnyMember>() =>
-  <CS extends MemberCodecs<A>>(
-    cs: CS,
+  <B extends MemberCodecs<A>>(
+    cs: B,
     name = "Serialized Sum",
-  ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>> =>
+  ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>> =>
     pipe(
       R.toArray(cs),
       A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
       ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
-    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, CS>>>
+    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>>
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -73,10 +73,10 @@ export const getSerializedCodec =
  */
 export const getCodecFromSerialized =
   <A extends Sum.AnyMember>() =>
-  <CS extends MemberCodecs<A>>(
-    cs: CS,
+  <B extends MemberCodecs<A>>(
+    cs: B,
     name = "Sum",
-  ): t.Type<A, Sum.Serialized<OutputsOf<A, CS>>> => {
+  ): t.Type<A, Sum.Serialized<OutputsOf<A, B>>> => {
     const sc = getSerializedCodec<A>()(cs, name)
 
     return new t.Type(
@@ -95,17 +95,17 @@ export const getCodecFromSerialized =
  */
 export const getCodec =
   <A extends Sum.AnyMember>() =>
-  <CS extends MemberCodecs<A>>(
-    cs: CS,
+  <B extends MemberCodecs<A>>(
+    cs: B,
     name = "Sum",
-  ): t.Type<A, OutputsOf<A, CS>> => {
+  ): t.Type<A, OutputsOf<A, B>> => {
     const sc = getSerializedCodec<A>()(cs, name)
 
     return new t.Type(
       name,
       (x): x is A => pipe(unknownSerialize(x), sc.is),
       flow(unknownSerialize, sc.decode, E.map(Sum.deserialize<A>())),
-      flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, CS>>()),
+      flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, B>>()),
     )
   }
 
