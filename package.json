@@ -47,6 +47,7 @@
     "fp-ts-std": "^0.11.0",
     "jest": "^26.6.0",
     "io-ts": "^2.2.0",
+    "io-ts-types": "^0.5.16",
     "monocle-ts": "^2.3.11",
     "newtype-ts": "^0.3.4",
     "prettier": "^2.1.2",

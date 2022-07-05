@@ -2,10 +2,10 @@
  * @since 0.1.0
  */
 
-/* eslint-disable functional/functional-parameters, functional/prefer-readonly-type */
+/* eslint-disable functional/functional-parameters, functional/prefer-readonly-type, @typescript-eslint/unbound-method */
 
 import * as Sum from "@unsplash/sum-types"
-import { constant, flow, pipe } from "fp-ts/function"
+import { flow, pipe } from "fp-ts/function"
 import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
@@ -32,8 +32,20 @@ type NullaryMember = Sum.Member<string>
  * magical than any alternative.
  */
 type MemberCodecs<A extends Sum.AnyMember> = {
-  readonly [B in A as Tag<B>]: t.Type<Value<B>>
+  readonly [B in A as Tag<B>]: t.Type<Value<B>, unknown>
 }
+
+type OutputsOf<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Sum.Member<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
+  : never
+
+const unknownSerialize = (x: unknown): readonly [unknown, unknown] =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Sum.serialize(x as any)
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
@@ -41,15 +53,17 @@ type MemberCodecs<A extends Sum.AnyMember> = {
  *
  * @since 0.1.0
  */
-export const getSerializedCodec = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Serialized Sum",
-): t.Type<Sum.Serialized<A>> =>
-  pipe(
-    R.toArray(cs) as Array<[Tag<A>, t.Type<Value<A>>]>,
-    A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
-    ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
-  ) as unknown as t.Type<Sum.Serialized<A>>
+export const getSerializedCodec =
+  <A extends Sum.AnyMember>() =>
+  <B extends MemberCodecs<A>>(
+    cs: B,
+    name = "Serialized Sum",
+  ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>> =>
+    pipe(
+      R.toArray(cs),
+      A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
+      ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
+    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>>
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -57,24 +71,21 @@ export const getSerializedCodec = <A extends Sum.AnyMember>(
  *
  * @since 0.1.0
  */
-export const getCodecFromSerialized = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Sum",
-): t.Type<A, Sum.Serialized<A>> => {
-  const sc = getSerializedCodec(cs, name)
+export const getCodecFromSerialized =
+  <A extends Sum.AnyMember>() =>
+  <B extends MemberCodecs<A>>(
+    cs: B,
+    name = "Sum",
+  ): t.Type<A, Sum.Serialized<OutputsOf<A, B>>> => {
+    const sc = getSerializedCodec<A>()(cs, name)
 
-  return new t.Type(
-    name,
-    (x): x is A =>
-      pipe(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        O.tryCatch(() => Sum.serialize<A>(x as any)),
-        O.match(constant(false), sc.is),
-      ),
-    flow(sc.validate, E.map(Sum.deserialize<A>())),
-    flow(Sum.serialize, x => sc.encode(x)),
-  )
-}
+    return new t.Type(
+      name,
+      (x): x is A => pipe(unknownSerialize(x), sc.is),
+      flow(sc.validate, E.map(Sum.deserialize<A>())),
+      flow(Sum.serialize, sc.encode),
+    )
+  }
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -82,36 +93,21 @@ export const getCodecFromSerialized = <A extends Sum.AnyMember>(
  *
  * @since 0.1.0
  */
-export const getCodec = <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
-  name = "Sum",
-): t.Type<A> => {
-  const sc = getSerializedCodec(cs, name)
+export const getCodec =
+  <A extends Sum.AnyMember>() =>
+  <B extends MemberCodecs<A>>(
+    cs: B,
+    name = "Sum",
+  ): t.Type<A, OutputsOf<A, B>> => {
+    const sc = getSerializedCodec<A>()(cs, name)
 
-  return new t.Type(
-    name,
-    (x): x is A =>
-      pipe(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        O.tryCatch(() => Sum.serialize<A>(x as any)),
-        O.match(constant(false), sc.is),
-      ),
-    (x, ctx) =>
-      pipe(
-        O.tryCatch(() =>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Sum.serialize(x as any as A),
-        ),
-        O.match(
-          () => t.failure<Sum.Serialized<A>>(x, ctx),
-          y => t.success(y),
-        ),
-        E.chain(y => sc.validate(y, ctx)),
-        E.map(constant(x as A)),
-      ),
-    t.identity,
-  )
-}
+    return new t.Type(
+      name,
+      (x): x is A => pipe(unknownSerialize(x), sc.is),
+      flow(unknownSerialize, sc.decode, E.map(Sum.deserialize<A>())),
+      flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, B>>()),
+    )
+  }
 
 /**
  * Ensures that every key in union `A` is present at least once in array `B`.
@@ -173,11 +169,7 @@ export const getCodecFromMappedNullaryTag =
     return new t.Type(
       name,
       (x): x is A =>
-        pipe(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          O.tryCatch(() => Sum.serialize<A>(x as any)),
-          O.match(constant(false), y => isKnownTag(y[0]) && y[1] === null),
-        ),
+        pipe(unknownSerialize(x), y => isKnownTag(y[0]) && y[1] === null),
       (x, ctx) =>
         pipe(
           x,
