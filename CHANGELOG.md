@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.4.0 (2022-09-05)
+
+Support `@unsplash/sum-types` ^0.3.0.
+
 ## 0.3.1 (2022-07-05)
 
 Respect differing `A` and `O` types in codecs.
