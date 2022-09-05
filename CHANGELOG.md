@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.3.1 (2022-07-05)
+
+Respect differing `A` and `O` types in codecs.
+
 ## 0.3.0 (2022-06-13)
 
 Add `getCodecFromNullaryTag`, `getCodecFromStringlyMappedNullaryTag`, and `getCodecFromMappedNullaryTag` codec constructors.
