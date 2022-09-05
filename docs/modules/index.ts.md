@@ -32,7 +32,10 @@ values.
 **Signature**
 
 ```ts
-export declare const getCodec: <A extends Sum.AnyMember>(cs: MemberCodecs<A>, name?: string) => t.Type<A, A, unknown>
+export declare const getCodec: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
+  cs: B,
+  name?: string
+) => t.Type<A, OutputsOf<A, B>, unknown>
 ```
 
 Added in v0.1.0
@@ -109,10 +112,10 @@ values, decoding and encoding to/from `Serialized<A>`.
 **Signature**
 
 ```ts
-export declare const getCodecFromSerialized: <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
+export declare const getCodecFromSerialized: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
+  cs: B,
   name?: string
-) => t.Type<A, Sum.Serialized<A>, unknown>
+) => t.Type<A, Sum.Serialized<OutputsOf<A, B>>, unknown>
 ```
 
 Added in v0.1.0
@@ -165,10 +168,10 @@ all its members` values.
 **Signature**
 
 ```ts
-export declare const getSerializedCodec: <A extends Sum.AnyMember>(
-  cs: MemberCodecs<A>,
+export declare const getSerializedCodec: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
+  cs: B,
   name?: string
-) => t.Type<Sum.Serialized<A>, Sum.Serialized<A>, unknown>
+) => t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>, unknown>
 ```
 
 Added in v0.1.0
