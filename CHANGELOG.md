@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.5.0 (_Unreleased_)
+
+Replace `getCodecFromStringlyMappedNullaryTag` with the more flexible `getCodecFromPrimitiveMappedNullaryTag`.
+
 ## 0.4.0 (2022-09-05)
 
 Support `@unsplash/sum-types` ^0.3.0.
