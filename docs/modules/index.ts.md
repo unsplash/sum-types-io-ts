@@ -16,8 +16,8 @@ Added in v0.1.0
   - [getCodec](#getcodec)
   - [getCodecFromMappedNullaryTag](#getcodecfrommappednullarytag)
   - [getCodecFromNullaryTag](#getcodecfromnullarytag)
+  - [getCodecFromPrimitiveMappedNullaryTag](#getcodecfromprimitivemappednullarytag)
   - [getCodecFromSerialized](#getcodecfromserialized)
-  - [getCodecFromStringlyMappedNullaryTag](#getcodecfromstringlymappednullarytag)
   - [getSerializedCodec](#getserializedcodec)
 
 ---
@@ -44,7 +44,7 @@ Added in v0.1.0
 
 Derive a codec for any given sum `A` in which all the constructors are
 nullary, decoding and encoding to/from the constructor tags via conversion
-functions. Consider instead `getCodecFromStringlyMappedNullaryTag` for
+functions. Consider instead `getCodecFromPrimitiveMappedNullaryTag` for
 stringly APIs.
 
 **Signature**
@@ -104,6 +104,48 @@ export declare const getCodecFromNullaryTag: <A extends NullaryMember>() => <B>(
 
 Added in v0.3.0
 
+## getCodecFromPrimitiveMappedNullaryTag
+
+A convenient alternative to `getCodecFromMappedNullaryTag` for working with
+for example stringly APIs. The behaviour is unspecified if the input `Record`
+contains duplicate values.
+
+**Signature**
+
+```ts
+export declare const getCodecFromPrimitiveMappedNullaryTag: <A extends NullaryMember>() => <
+  B extends string | number | bigint | boolean | null | undefined
+>(
+  tos: Record<Tag<A>, B>,
+  name?: string
+) => t.Type<A, B, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import * as Sum from '@unsplash/sum-types'
+import { getCodecFromPrimitiveMappedNullaryTag } from '@unsplash/sum-types-io-ts'
+import * as O from 'fp-ts/Option'
+import * as E from 'fp-ts/Either'
+
+type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
+const Weather = Sum.create<Weather>()
+type Country = 'UK' | 'Italy'
+
+const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromPrimitiveMappedNullaryTag<Weather>()({
+  Sun: 'Italy',
+  Rain: 'UK',
+})
+
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain()))
+```
+
+Added in v0.5.0
+
+-
+
 ## getCodecFromSerialized
 
 Derive a codec for any given sum `A` provided codecs for all its members'
@@ -119,46 +161,6 @@ export declare const getCodecFromSerialized: <A extends Sum.AnyMember>() => <B e
 ```
 
 Added in v0.1.0
-
-## getCodecFromStringlyMappedNullaryTag
-
-A convenient alternative to `getCodecFromMappedNullaryTag` for working with
-stringly APIs. The behaviour is unspecified if the input `Record` contains
-duplicate values.
-
-**Signature**
-
-```ts
-export declare const getCodecFromStringlyMappedNullaryTag: <A extends NullaryMember>() => <B extends string>(
-  tos: Record<Tag<A>, B>,
-  name?: string
-) => t.Type<A, B, unknown>
-```
-
-**Example**
-
-```ts
-import * as t from 'io-ts'
-import * as Sum from '@unsplash/sum-types'
-import { getCodecFromStringlyMappedNullaryTag } from '@unsplash/sum-types-io-ts'
-import * as O from 'fp-ts/Option'
-import * as E from 'fp-ts/Either'
-
-type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
-const Weather = Sum.create<Weather>()
-type Country = 'UK' | 'Italy'
-
-const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromStringlyMappedNullaryTag<Weather>()({
-  Sun: 'Italy',
-  Rain: 'UK',
-})
-
-assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain()))
-```
-
-Added in v0.3.0
-
--
 
 ## getSerializedCodec
 

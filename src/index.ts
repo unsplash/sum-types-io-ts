@@ -10,10 +10,12 @@ import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
+import * as Map from "fp-ts/Map"
 import * as R from "fp-ts/Record"
 import * as Str from "fp-ts/string"
 import { mapFst } from "fp-ts/Tuple"
 import { Refinement } from "fp-ts/Refinement"
+import { eqStrict } from "fp-ts/Eq"
 
 // We must add the `any` type argument or it won't distribute over unions for
 // some reason.
@@ -23,6 +25,8 @@ type Value<A> = A extends Sum.Member<any, infer B> ? B : never
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 type NullaryMember = Sum.Member<string>
+
+type Primitive = string | number | boolean | bigint | undefined | null
 
 /**
  * An object from member tags to codecs of their values.
@@ -123,7 +127,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
 /**
  * Derive a codec for any given sum `A` in which all the constructors are
  * nullary, decoding and encoding to/from the constructor tags via conversion
- * functions. Consider instead `getCodecFromStringlyMappedNullaryTag` for
+ * functions. Consider instead `getCodecFromPrimitiveMappedNullaryTag` for
  * stringly APIs.
  *
  * @example
@@ -188,13 +192,13 @@ export const getCodecFromMappedNullaryTag =
 
 /**
  * A convenient alternative to `getCodecFromMappedNullaryTag` for working with
- * stringly APIs. The behaviour is unspecified if the input `Record` contains
- * duplicate values.
+ * for example stringly APIs. The behaviour is unspecified if the input `Record`
+ * contains duplicate values.
  *
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { getCodecFromStringlyMappedNullaryTag } from "@unsplash/sum-types-io-ts"
+ * import { getCodecFromPrimitiveMappedNullaryTag } from "@unsplash/sum-types-io-ts"
  * import * as O from "fp-ts/Option"
  * import * as E from "fp-ts/Either"
  *
@@ -203,27 +207,27 @@ export const getCodecFromMappedNullaryTag =
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromStringlyMappedNullaryTag<Weather>()({ Sun: "Italy", Rain: "UK" })
+ *   getCodecFromPrimitiveMappedNullaryTag<Weather>()({ Sun: "Italy", Rain: "UK" })
  *
  * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
  *
- * @since 0.3.0
+ * @since 0.5.0
  **/
-export const getCodecFromStringlyMappedNullaryTag =
+export const getCodecFromPrimitiveMappedNullaryTag =
   <A extends NullaryMember>() =>
-  <B extends string>(
+  <B extends Primitive>(
     tos: Record<Tag<A>, B>,
-    name = "Sum Stringly Mapped Tag",
+    name = "Sum Primitive Mapped Tag",
   ): t.Type<A, B> => {
-    const froms = pipe(
+    const froms: Map<B, Tag<A>> = pipe(
       tos,
-      R.reduceWithIndex(Str.Ord)({} as Record<B, Tag<A>>, (k, xs, v) =>
-        R.upsertAt(v, k)(xs),
+      R.reduceWithIndex(Str.Ord)(new globalThis.Map<B, Tag<A>>(), (k, xs, v) =>
+        Map.upsertAt<B>(eqStrict)(v, k)(xs),
       ),
     )
 
     return getCodecFromMappedNullaryTag<A>()(
-      x => (typeof x === "string" ? R.lookup(x)(froms) : O.none),
+      x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
     )(Object.keys(tos) as Array<Tag<A>>, name)
   }
@@ -237,7 +241,7 @@ export const getCodecFromStringlyMappedNullaryTag =
 export const getCodecFromNullaryTag =
   <A extends NullaryMember>() =>
   <B>(tags: EveryKeyPresent<Tag<A>, B>, name = "Sum Tag"): t.Type<A, string> =>
-    getCodecFromStringlyMappedNullaryTag<A>()(
+    getCodecFromPrimitiveMappedNullaryTag<A>()(
       pipe(
         tags,
         A.reduce({} as Record<Tag<A>, string>, (xs, y) =>
