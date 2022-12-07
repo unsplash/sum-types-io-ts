@@ -2,7 +2,7 @@
 
 This project adheres to semantic versioning.
 
-## 0.5.0 (_Unreleased_)
+## 0.5.0 (2022-12-07)
 
 Replace `getCodecFromStringlyMappedNullaryTag` with the more flexible `getCodecFromPrimitiveMappedNullaryTag`.
 
