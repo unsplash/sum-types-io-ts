@@ -10,10 +10,12 @@ import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
 import * as E from "fp-ts/Either"
+import * as Map from "fp-ts/Map"
 import * as R from "fp-ts/Record"
 import * as Str from "fp-ts/string"
 import { mapFst } from "fp-ts/Tuple"
 import { Refinement } from "fp-ts/Refinement"
+import { eqStrict } from "fp-ts/Eq"
 
 // We must add the `any` type argument or it won't distribute over unions for
 // some reason.
@@ -215,15 +217,15 @@ export const getCodecFromStringlyMappedNullaryTag =
     tos: Record<Tag<A>, B>,
     name = "Sum Stringly Mapped Tag",
   ): t.Type<A, B> => {
-    const froms = pipe(
+    const froms: Map<B, Tag<A>> = pipe(
       tos,
-      R.reduceWithIndex(Str.Ord)({} as Record<B, Tag<A>>, (k, xs, v) =>
-        R.upsertAt(v, k)(xs),
+      R.reduceWithIndex(Str.Ord)(new globalThis.Map<B, Tag<A>>(), (k, xs, v) =>
+        Map.upsertAt<B>(eqStrict)(v, k)(xs),
       ),
     )
 
     return getCodecFromMappedNullaryTag<A>()(
-      x => (typeof x === "string" ? R.lookup(x)(froms) : O.none),
+      x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
     )(Object.keys(tos) as Array<Tag<A>>, name)
   }
