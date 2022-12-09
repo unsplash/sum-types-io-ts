@@ -194,13 +194,17 @@ export const getCodecFromMappedNullaryTag =
  * @since 0.5.1
  */
 export class MappedType<A, B> extends t.Type<A, B, unknown> {
-  readonly _tag: "@unsplash/sum-types-io-ts/MappedType" = "@unsplash/sum-types-io-ts/MappedType"
+  /**
+   * @since 0.5.1
+   */
+  readonly _tag: "@unsplash/sum-types-io-ts/MappedType" =
+    "@unsplash/sum-types-io-ts/MappedType"
   constructor(
     name: string,
     is: MappedType<A, B>["is"],
     validate: MappedType<A, B>["validate"],
     encode: MappedType<A, B>["encode"],
-    readonly Map: Record<Tag<A>, B>
+    readonly Map: Record<Tag<A>, B>,
   ) {
     super(name, is, validate, encode)
   }
@@ -247,7 +251,13 @@ export const getCodecFromPrimitiveMappedNullaryTag =
       x => tos[x],
     )(Object.keys(tos) as Array<Tag<A>>, name)
 
-    return new MappedType(codec.name, codec.is, codec.validate, codec.encode, tos)
+    return new MappedType(
+      codec.name,
+      codec.is,
+      codec.validate,
+      codec.encode,
+      tos,
+    )
   }
 
 /**
