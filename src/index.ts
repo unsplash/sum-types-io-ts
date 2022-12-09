@@ -190,6 +190,9 @@ export const getCodecFromMappedNullaryTag =
     )
   }
 
+/**
+ * @since 0.5.1
+ */
 export class MappedType<A, B> extends t.Type<A, B, unknown> {
   readonly _tag: "@unsplash/sum-types-io-ts/MappedType" = "@unsplash/sum-types-io-ts/MappedType"
   constructor(
