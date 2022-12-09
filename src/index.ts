@@ -191,6 +191,26 @@ export const getCodecFromMappedNullaryTag =
   }
 
 /**
+ * @since 0.5.1
+ */
+export class MappedType<A, B> extends t.Type<A, B, unknown> {
+  /**
+   * @since 0.5.1
+   */
+  readonly _tag: "@unsplash/sum-types-io-ts/MappedType" =
+    "@unsplash/sum-types-io-ts/MappedType"
+  constructor(
+    name: string,
+    is: MappedType<A, B>["is"],
+    validate: MappedType<A, B>["validate"],
+    encode: MappedType<A, B>["encode"],
+    readonly Map: Record<Tag<A>, B>,
+  ) {
+    super(name, is, validate, encode)
+  }
+}
+
+/**
  * A convenient alternative to `getCodecFromMappedNullaryTag` for working with
  * for example stringly APIs. The behaviour is unspecified if the input `Record`
  * contains duplicate values.
@@ -218,7 +238,7 @@ export const getCodecFromPrimitiveMappedNullaryTag =
   <B extends Primitive>(
     tos: Record<Tag<A>, B>,
     name = "Sum Primitive Mapped Tag",
-  ): t.Type<A, B> => {
+  ): MappedType<A, B> => {
     const froms: Map<B, Tag<A>> = pipe(
       tos,
       R.reduceWithIndex(Str.Ord)(new globalThis.Map<B, Tag<A>>(), (k, xs, v) =>
@@ -226,10 +246,18 @@ export const getCodecFromPrimitiveMappedNullaryTag =
       ),
     )
 
-    return getCodecFromMappedNullaryTag<A>()(
+    const codec = getCodecFromMappedNullaryTag<A>()(
       x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
     )(Object.keys(tos) as Array<Tag<A>>, name)
+
+    return new MappedType(
+      codec.name,
+      codec.is,
+      codec.validate,
+      codec.encode,
+      tos,
+    )
   }
 
 /**

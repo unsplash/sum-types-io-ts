@@ -14,9 +14,10 @@ module.exports = {
   },
   rules: {
     "functional/prefer-type-literal": 0,
+    "functional/no-class": 0,
     "functional/no-expression-statement": [
       2,
-      { ignorePattern: "(describe)|(it)|(expect)|(fc.)" },
+      { ignorePattern: "(describe)|(it)|(expect)|(fc.)|(super)" },
     ],
     "@typescript-eslint/array-type": [1, { default: "generic" }],
     "@typescript-eslint/strict-boolean-expressions": [

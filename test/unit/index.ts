@@ -281,6 +281,10 @@ describe("index", () => {
       NB: 2,
     })
 
+    it("Map", () => {
+      expect(c.Map).toEqual({ NA: "1", NB: 2 })
+    })
+
     it("type guards", () => {
       expect(c.is(NA())).toBe(true)
       expect(c.is("NA")).toBe(false)
