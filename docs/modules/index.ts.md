@@ -13,6 +13,8 @@ Added in v0.1.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [MappedType (class)](#mappedtype-class)
+    - [\_tag (property)](#_tag-property)
   - [getCodec](#getcodec)
   - [getCodecFromMappedNullaryTag](#getcodecfrommappednullarytag)
   - [getCodecFromNullaryTag](#getcodecfromnullarytag)
@@ -23,6 +25,34 @@ Added in v0.1.0
 ---
 
 # utils
+
+## MappedType (class)
+
+**Signature**
+
+```ts
+export declare class MappedType<A, B> {
+  constructor(
+    name: string,
+    is: MappedType<A, B>['is'],
+    validate: MappedType<A, B>['validate'],
+    encode: MappedType<A, B>['encode'],
+    readonly Map: Record<Tag<A>, B>
+  )
+}
+```
+
+Added in v0.5.1
+
+### \_tag (property)
+
+**Signature**
+
+```ts
+readonly _tag: "@unsplash/sum-types-io-ts/MappedType"
+```
+
+Added in v0.5.1
 
 ## getCodec
 
@@ -118,7 +148,7 @@ export declare const getCodecFromPrimitiveMappedNullaryTag: <A extends NullaryMe
 >(
   tos: Record<Tag<A>, B>,
   name?: string
-) => t.Type<A, B, unknown>
+) => MappedType<A, B>
 ```
 
 **Example**
