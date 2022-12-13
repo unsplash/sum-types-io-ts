@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.5.1 (2022-12-13)
+
+Provide access to `getCodecFromPrimitiveMappedNullaryTag` mappings via a `MappedType` subclass.
+
 ## 0.5.0 (2022-12-07)
 
 Replace `getCodecFromStringlyMappedNullaryTag` with the more flexible `getCodecFromPrimitiveMappedNullaryTag`.
