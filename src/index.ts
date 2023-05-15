@@ -88,7 +88,7 @@ export const getCodecFromSerialized =
 
     return new t.Type(
       name,
-      (x): x is A => pipe(unknownSerialize(x), sc.is),
+      (x): x is A => pipe(unknownSerialize(x), O.exists(sc.is)),
       flow(sc.validate, E.map(Sum.deserialize<A>())),
       flow(Sum.serialize, sc.encode),
     )
@@ -110,8 +110,15 @@ export const getCodec =
 
     return new t.Type(
       name,
-      (x): x is A => pipe(unknownSerialize(x), sc.is),
-      flow(unknownSerialize, sc.decode, E.map(Sum.deserialize<A>())),
+      (x): x is A => pipe(unknownSerialize(x), O.exists(sc.is)),
+      (i, c) =>
+        pipe(
+          i,
+          unknownSerialize,
+          O.matchW(() => t.failure(i, c), E.right),
+          E.chain(sc.decode),
+          E.map(Sum.deserialize<A>()),
+        ),
       flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, B>>()),
     )
   }
@@ -176,7 +183,10 @@ export const getCodecFromMappedNullaryTag =
     return new t.Type(
       name,
       (x): x is A =>
-        pipe(unknownSerialize(x), y => isKnownTag(y[0]) && y[1] === null),
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => isKnownTag(y[0]) && y[1] === null),
+        ),
       (x, ctx) =>
         pipe(
           x,
