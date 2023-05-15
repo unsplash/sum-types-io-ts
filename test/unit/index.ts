@@ -270,7 +270,7 @@ describe("index", () => {
       )
     })
 
-    it("`is` doesn't throw when getting unsafe inputs", () => {
+    it("`is` returns false when getting non sum-types inputs", () => {
       expect(c.is(undefined)).toBe(false)
     })
   })
