@@ -269,6 +269,10 @@ describe("index", () => {
         E.right(["NA", null]),
       )
     })
+
+    it("`is` doesn't throw when getting unsafe inputs", () => {
+      expect(c.is(undefined)).toBe(false)
+    })
   })
 
   describe("getCodecFromPrimitiveMappedNullaryTag", () => {
