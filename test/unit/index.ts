@@ -269,6 +269,14 @@ describe("index", () => {
         E.right(["NA", null]),
       )
     })
+
+    it("`is` returns false when getting non sum-types inputs", () => {
+      expect(c.is(undefined)).toBe(false)
+      expect(c.is({})).toBe(false)
+      expect(c.is([])).toBe(false)
+      expect(c.is(Symbol("test"))).toBe(false)
+      expect(c.is(null)).toBe(false)
+    })
   })
 
   describe("getCodecFromPrimitiveMappedNullaryTag", () => {
