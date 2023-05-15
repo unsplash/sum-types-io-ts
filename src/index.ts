@@ -47,9 +47,12 @@ type OutputsOf<
     Sum.Member<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
   : never
 
-const unknownSerialize = (x: unknown): readonly [unknown, unknown] =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Sum.serialize(x as any)
+const unknownSerialize = (
+  x: unknown,
+): O.Option<readonly [unknown, unknown]> => {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+  return O.tryCatch(() => Sum.serialize(x as any))
+}
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
