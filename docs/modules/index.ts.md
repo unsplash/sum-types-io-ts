@@ -62,10 +62,9 @@ values.
 **Signature**
 
 ```ts
-export declare const getCodec: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
-  cs: B,
-  name?: string
-) => t.Type<A, OutputsOf<A, B>, unknown>
+export declare const getCodec: <A extends Sum.AnyMember>(
+  sum: Sum.Sum<A>
+) => <B extends MemberCodecs<A>>(cs: B, name?: string) => t.Type<A, OutputsOf<A, B>, unknown>
 ```
 
 Added in v0.1.0
@@ -80,7 +79,9 @@ stringly APIs.
 **Signature**
 
 ```ts
-export declare const getCodecFromMappedNullaryTag: <A extends NullaryMember>() => <B>(
+export declare const getCodecFromMappedNullaryTag: <A extends NullaryMember>(
+  sum: Sum.Sum<A>
+) => <B>(
   from: (x: unknown) => O.Option<Tag<A>>,
   to: (x: Tag<A>) => B
 ) => <C>(tags: EveryKeyPresent<Tag<A>, C>, name?: string) => t.Type<A, B, unknown>
@@ -99,7 +100,7 @@ type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
 const Weather = Sum.create<Weather>()
 type Country = 'UK' | 'Italy'
 
-const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTag<Weather>()<Country>(
+const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTag(Weather)<Country>(
   (x) => {
     switch (x) {
       case 'Italy':
@@ -113,7 +114,7 @@ const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTa
   (x) => (x === 'Sun' ? 'Italy' : 'UK')
 )(['Sun', 'Rain'])
 
-assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain()))
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain))
 ```
 
 Added in v0.3.0
@@ -126,10 +127,9 @@ nullary, decoding and encoding to/from the constructor tags.
 **Signature**
 
 ```ts
-export declare const getCodecFromNullaryTag: <A extends NullaryMember>() => <B>(
-  tags: EveryKeyPresent<Tag<A>, B>,
-  name?: string
-) => t.Type<A, string, unknown>
+export declare const getCodecFromNullaryTag: <A extends NullaryMember>(
+  sum: Sum.Sum<A>
+) => <B>(tags: EveryKeyPresent<Tag<A>, B>, name?: string) => t.Type<A, string, unknown>
 ```
 
 Added in v0.3.0
@@ -143,9 +143,9 @@ contains duplicate values.
 **Signature**
 
 ```ts
-export declare const getCodecFromPrimitiveMappedNullaryTag: <A extends NullaryMember>() => <
-  B extends string | number | bigint | boolean | null | undefined
->(
+export declare const getCodecFromPrimitiveMappedNullaryTag: <A extends NullaryMember>(
+  sum: Sum.Sum<A>
+) => <B extends string | number | bigint | boolean | null | undefined>(
   tos: Record<Tag<A>, B>,
   name?: string
 ) => MappedType<A, B>
@@ -164,12 +164,12 @@ type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
 const Weather = Sum.create<Weather>()
 type Country = 'UK' | 'Italy'
 
-const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromPrimitiveMappedNullaryTag<Weather>()({
+const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromPrimitiveMappedNullaryTag(Weather)({
   Sun: 'Italy',
   Rain: 'UK',
 })
 
-assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain()))
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain))
 ```
 
 Added in v0.5.0
@@ -184,10 +184,9 @@ values, decoding and encoding to/from `Serialized<A>`.
 **Signature**
 
 ```ts
-export declare const getCodecFromSerialized: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
-  cs: B,
-  name?: string
-) => t.Type<A, Sum.Serialized<OutputsOf<A, B>>, unknown>
+export declare const getCodecFromSerialized: <A extends Sum.AnyMember>(
+  sum: Sum.Sum<A>
+) => <B extends MemberCodecs<A>>(cs: B, name?: string) => t.Type<A, Sum.Serialized<OutputsOf<A, B>>, unknown>
 ```
 
 Added in v0.1.0

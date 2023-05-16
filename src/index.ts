@@ -79,7 +79,7 @@ export const getSerializedCodec =
  * @since 0.1.0
  */
 export const getCodecFromSerialized =
-  <A extends Sum.AnyMember>() =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
   <B extends MemberCodecs<A>>(
     cs: B,
     name = "Sum",
@@ -89,7 +89,7 @@ export const getCodecFromSerialized =
     return new t.Type(
       name,
       (x): x is A => pipe(unknownSerialize(x), O.exists(sc.is)),
-      flow(sc.validate, E.map(Sum.deserialize<A>())),
+      flow(sc.validate, E.map(Sum.deserialize(sum))),
       flow(Sum.serialize, sc.encode),
     )
   }
@@ -101,7 +101,7 @@ export const getCodecFromSerialized =
  * @since 0.1.0
  */
 export const getCodec =
-  <A extends Sum.AnyMember>() =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
   <B extends MemberCodecs<A>>(
     cs: B,
     name = "Sum",
@@ -117,9 +117,13 @@ export const getCodec =
           unknownSerialize,
           O.matchW(() => t.failure(i, c), E.right),
           E.chain(sc.decode),
-          E.map(Sum.deserialize<A>()),
+          E.map(Sum.deserialize(sum)),
         ),
-      flow(Sum.serialize, sc.encode, Sum.deserialize<OutputsOf<A, B>>()),
+      flow(
+        Sum.serialize,
+        sc.encode,
+        Sum.deserialize(sum as unknown as Sum.Sum<OutputsOf<A, B>>),
+      ),
     )
   }
 
@@ -152,7 +156,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromMappedNullaryTag<Weather>()<Country>(
+ *   getCodecFromMappedNullaryTag(Weather)<Country>(
  *     x => {
  *       switch (x) {
  *         case "Italy":
@@ -166,12 +170,12 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  *     x => (x === "Sun" ? "Italy" : "UK"),
  *   )(["Sun", "Rain"])
  *
- * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
  *
  * @since 0.3.0
  */
 export const getCodecFromMappedNullaryTag =
-  <A extends NullaryMember>() =>
+  <A extends NullaryMember>(sum: Sum.Sum<A>) =>
   <B>(from: (x: unknown) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
   <C>(
     tags: EveryKeyPresent<Tag<A>, C>,
@@ -195,7 +199,7 @@ export const getCodecFromMappedNullaryTag =
             () => t.failure(x, ctx),
             k =>
               t.success(
-                Sum.deserialize<A>()([k, null] as unknown as Sum.Serialized<A>),
+                Sum.deserialize(sum)([k, null] as unknown as Sum.Serialized<A>),
               ),
           ),
         ),
@@ -240,14 +244,14 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromPrimitiveMappedNullaryTag<Weather>()({ Sun: "Italy", Rain: "UK" })
+ *   getCodecFromPrimitiveMappedNullaryTag(Weather)({ Sun: "Italy", Rain: "UK" })
  *
- * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain()))
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
  *
  * @since 0.5.0
  **/
 export const getCodecFromPrimitiveMappedNullaryTag =
-  <A extends NullaryMember>() =>
+  <A extends NullaryMember>(sum: Sum.Sum<A>) =>
   <B extends Primitive>(
     tos: Record<Tag<A>, B>,
     name = "Sum Primitive Mapped Tag",
@@ -259,7 +263,7 @@ export const getCodecFromPrimitiveMappedNullaryTag =
       ),
     )
 
-    const codec = getCodecFromMappedNullaryTag<A>()(
+    const codec = getCodecFromMappedNullaryTag(sum)(
       x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
     )(Object.keys(tos) as Array<Tag<A>>, name)
@@ -280,9 +284,9 @@ export const getCodecFromPrimitiveMappedNullaryTag =
  * @since 0.3.0
  */
 export const getCodecFromNullaryTag =
-  <A extends NullaryMember>() =>
+  <A extends NullaryMember>(sum: Sum.Sum<A>) =>
   <B>(tags: EveryKeyPresent<Tag<A>, B>, name = "Sum Tag"): t.Type<A, string> =>
-    getCodecFromPrimitiveMappedNullaryTag<A>()(
+    getCodecFromPrimitiveMappedNullaryTag(sum)(
       pipe(
         tags,
         A.reduce({} as Record<Tag<A>, string>, (xs, y) =>

@@ -22,17 +22,19 @@ import { NumberFromString } from "io-ts-types"
 
 describe("index", () => {
   type Nested = Sum.Member<"Nested", number>
+  const Nested = Sum.create<Nested>()
   const {
-    mk: { Nested },
-  } = Sum.create<Nested>()
+    mk: { Nested: mkNested },
+  } = Nested
 
   type S = Sum.Member<"A", number> | Sum.Member<"B"> | Sum.Member<"C", Nested>
+  const S = Sum.create<S>()
   const {
     mk: { A, B, C },
-  } = Sum.create<S>()
+  } = S
 
   describe("getSerializedCodec", () => {
-    const nested = getCodecFromSerialized<Nested>()({
+    const nested = getCodecFromSerialized(Nested)({
       Nested: t.number,
     })
     const f: t.Type<
@@ -48,17 +50,19 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(pipe(B(), Sum.serialize, f.is)).toBe(true)
+      expect(pipe(B, Sum.serialize, f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.integer(), flow(Nested, C, Sum.serialize, f.is)))
+      fc.assert(
+        fc.property(fc.integer(), flow(mkNested, C, Sum.serialize, f.is)),
+      )
     })
 
     it("encodes", () => {
-      expect(pipe(B(), Sum.serialize, f.encode)).toEqual(["B", null])
+      expect(pipe(B, Sum.serialize, f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), x =>
-          expect(pipe(x, Nested, C, Sum.serialize, f.encode)).toEqual([
+          expect(pipe(x, mkNested, C, Sum.serialize, f.encode)).toEqual([
             "C",
             ["Nested", x],
           ]),
@@ -112,7 +116,7 @@ describe("index", () => {
   })
 
   describe("getCodecFromSerialized", () => {
-    const nested = getCodecFromSerialized<Nested>()({
+    const nested = getCodecFromSerialized(Nested)({
       Nested: t.number,
     })
     const f: t.Type<
@@ -121,24 +125,24 @@ describe("index", () => {
       | readonly ["B", null]
       | readonly ["C", readonly ["Nested", number]],
       unknown
-    > = getCodecFromSerialized<S>()({
+    > = getCodecFromSerialized(S)({
       A: NumberFromString,
       B: t.null,
       C: nested,
     })
 
     it("type guards", () => {
-      expect(pipe(B(), f.is)).toBe(true)
+      expect(pipe(B, f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.integer(), flow(Nested, C, f.is)))
+      fc.assert(fc.property(fc.integer(), flow(mkNested, C, f.is)))
     })
 
     it("encodes", () => {
-      expect(pipe(B(), f.encode)).toEqual(["B", null])
+      expect(pipe(B, f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), x =>
-          expect(pipe(x, Nested, C, f.encode)).toEqual(["C", ["Nested", x]]),
+          expect(pipe(x, mkNested, C, f.encode)).toEqual(["C", ["Nested", x]]),
         ),
       )
     })
@@ -158,7 +162,7 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      const mx = f.decode(pipe(B(), Sum.serialize))
+      const mx = f.decode(pipe(B, Sum.serialize))
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
       expect(Sum.serialize(x)).toEqual(["B", null])
@@ -172,35 +176,35 @@ describe("index", () => {
   })
 
   describe("getCodec", () => {
-    const nested = getCodecFromSerialized<Nested>()({
+    const nested = getCodecFromSerialized(Nested)({
       Nested: t.number,
     })
-    const f = getCodec<S>()({
+    const f = getCodec(S)({
       A: NumberFromString,
       B: t.null,
       C: nested,
     })
 
     it("type guards", () => {
-      expect(pipe(B(), f.is)).toBe(true)
+      expect(pipe(B, f.is)).toBe(true)
 
-      fc.assert(fc.property(fc.integer(), flow(Nested, C, f.is)))
+      fc.assert(fc.property(fc.integer(), flow(mkNested, C, f.is)))
     })
 
     it("encodes", () => {
-      const x = f.encode(B())
+      const x = f.encode(B)
       expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), x =>
-          expect(f.encode(C(Nested(x)))).toEqual(
+          expect(f.encode(C(mkNested(x)))).toEqual(
             // Fixed type of constructor `C` expects runtime `Nested`, but it
             // will actually be serialized during encode. This is all typesafe
             // but we're cheating on types here to avoid having to create a new
             // `C` constructor that takes `Serialized<Nested>` instead of just
             // `Nested`.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            C(Sum.serialize(Nested(x)) as any),
+            C(Sum.serialize(mkNested(x)) as any),
           ),
         ),
       )
@@ -221,7 +225,7 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      const mx = f.decode(B())
+      const mx = f.decode(B)
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
       expect(Sum.serialize(x)).toEqual(["B", null])
@@ -236,23 +240,24 @@ describe("index", () => {
 
   describe("getCodecFromMappedNullaryTag", () => {
     type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const NS = Sum.create<NS>()
     const {
       mk: { NA, NB },
-    } = Sum.create<NS>()
-    const c = getCodecFromMappedNullaryTag<NS>()(
+    } = NS
+    const c = getCodecFromMappedNullaryTag(NS)(
       x => (x === 1 ? O.some("NA") : x === 2 ? O.some("NB") : O.none),
       x => (x === "NA" ? 1 : 2),
     )(["NA", "NB"])
 
     it("type guards", () => {
-      expect(c.is(NA())).toBe(true)
+      expect(c.is(NA)).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA())).toEqual(1)
-      expect(c.encode(NB())).toEqual(2)
+      expect(c.encode(NA)).toEqual(1)
+      expect(c.encode(NB)).toEqual(2)
     })
 
     it("does not decode tag, ignoring transformation function", () => {
@@ -281,10 +286,11 @@ describe("index", () => {
 
   describe("getCodecFromPrimitiveMappedNullaryTag", () => {
     type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const NS = Sum.create<NS>()
     const {
       mk: { NA, NB },
-    } = Sum.create<NS>()
-    const c = getCodecFromPrimitiveMappedNullaryTag<NS>()<string | number>({
+    } = NS
+    const c = getCodecFromPrimitiveMappedNullaryTag(NS)<string | number>({
       NA: "1",
       NB: 2,
     })
@@ -294,14 +300,14 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(NA())).toBe(true)
+      expect(c.is(NA)).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA())).toEqual("1")
-      expect(c.encode(NB())).toEqual(2)
+      expect(c.encode(NA)).toEqual("1")
+      expect(c.encode(NB)).toEqual(2)
     })
 
     it("does not decode tag, ignoring transformation function", () => {
@@ -327,20 +333,21 @@ describe("index", () => {
 
   describe("getCodecFromNullaryTag", () => {
     type NS = Sum.Member<"NA"> | Sum.Member<"NB">
+    const NS = Sum.create<NS>()
     const {
       mk: { NA, NB },
-    } = Sum.create<NS>()
-    const c = getCodecFromNullaryTag<NS>()(["NA", "NB"])
+    } = NS
+    const c = getCodecFromNullaryTag(NS)(["NA", "NB"])
 
     it("type guards", () => {
-      expect(c.is(NA())).toBe(true)
+      expect(c.is(NA)).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA())).toEqual("NA")
-      expect(c.encode(NB())).toEqual("NB")
+      expect(c.encode(NA)).toEqual("NA")
+      expect(c.encode(NB)).toEqual("NB")
     })
 
     it("does not decode unknown tag", () => {
