@@ -1,9 +1,5 @@
 /* eslint-disable functional/functional-parameters */
 
-// Beware that `toEqual` and friends don't play very nicely with sum types as
-// they use `Proxy` under the hood, thus we should instead test against
-// their serialized forms.
-
 import fc from "fast-check"
 import * as Sum from "@unsplash/sum-types"
 import {
