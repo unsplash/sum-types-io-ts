@@ -176,11 +176,11 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  */
 export const getCodecFromMappedNullaryTag =
   <A extends NullaryMember>(sum: Sum.Sum<A>) =>
-  <B, I>(from: (x: I) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
+  <O, I>(from: (x: I) => O.Option<Tag<A>>, to: (x: Tag<A>) => O) =>
   <C>(
     tags: EveryKeyPresent<Tag<A>, C>,
     name = "Sum Mapped Tag",
-  ): t.Type<A, B, I> => {
+  ): t.Type<A, O, I> => {
     const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
       tags.includes(x as Tag<A>)
 
