@@ -156,7 +156,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromMappedNullaryTag(Weather)<Country>(
+ *   getCodecFromMappedNullaryTag(Weather)<Country, unknown>(
  *     x => {
  *       switch (x) {
  *         case "Italy":
@@ -176,11 +176,11 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  */
 export const getCodecFromMappedNullaryTag =
   <A extends NullaryMember>(sum: Sum.Sum<A>) =>
-  <B>(from: (x: unknown) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
+  <B, I>(from: (x: I) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
   <C>(
     tags: EveryKeyPresent<Tag<A>, C>,
     name = "Sum Mapped Tag",
-  ): t.Type<A, B> => {
+  ): t.Type<A, B, I> => {
     const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
       tags.includes(x as Tag<A>)
 
@@ -295,3 +295,40 @@ export const getCodecFromNullaryTag =
       ),
       name,
     )
+
+// import * as t from "io-ts"
+// import * as Sum from "@unsplash/sum-types"
+// import { getCodecFromMappedNullaryTag } from "@unsplash/sum-types-io-ts"
+// import * as O from "fp-ts/Option"
+// import * as E from "fp-ts/Either"
+
+// type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
+// const Weather = Sum.create<Weather>()
+// const Country = t.union([
+//   t.literal("UK"),
+//   t.literal("Italy"),
+//   t.literal("Spain"),
+// ])
+// type Country = t.TypeOf<typeof Country>
+// const WeatherFromCountry: t.Type<Weather, Country, Country> =
+//   getCodecFromMappedNullaryTag(Weather)<Country, Country>(
+//     x => {
+//       // eslint-disable-next-line functional/no-conditional-statement
+//       switch (x) {
+//         // This will error because it's not a valid country.
+//         case "France":
+//           return O.some("Sun")
+//         case "Italy":
+//           return O.some("Sun")
+//         case "UK":
+//           return O.some("Rain")
+//         case 'Spain':
+//           return O.none
+//       }
+//     },
+//     x => (x === "Sun" ? "Italy" : "UK"),
+//   )(["Sun", "Rain"])
+// const WeatherFromCountryFromUnknown: t.Type<Weather, Country, unknown> =
+//   Country.pipe(WeatherFromCountry)
+
+// assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
