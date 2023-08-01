@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.6.1 (2023-08-01)
+
+Update `getCodecFromMappedNullaryTag` to support generic input type.
+
 ## 0.6.0 (2023-05-16)
 
 Support `@unsplash/sum-types` ^0.4.0.
