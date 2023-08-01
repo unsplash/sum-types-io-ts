@@ -156,7 +156,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromMappedNullaryTag(Weather)<Country>(
+ *   getCodecFromMappedNullaryTag(Weather)(
  *     x => {
  *       switch (x) {
  *         case "Italy":
@@ -167,7 +167,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  *           return O.none
  *       }
  *     },
- *     x => (x === "Sun" ? "Italy" : "UK"),
+ *     (x): Country => (x === "Sun" ? "Italy" : "UK"),
  *   )(["Sun", "Rain"])
  *
  * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
@@ -176,11 +176,11 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  */
 export const getCodecFromMappedNullaryTag =
   <A extends NullaryMember>(sum: Sum.Sum<A>) =>
-  <B>(from: (x: unknown) => O.Option<Tag<A>>, to: (x: Tag<A>) => B) =>
+  <O, I>(from: (x: I) => O.Option<Tag<A>>, to: (x: Tag<A>) => O) =>
   <C>(
     tags: EveryKeyPresent<Tag<A>, C>,
     name = "Sum Mapped Tag",
-  ): t.Type<A, B> => {
+  ): t.Type<A, O, I> => {
     const isKnownTag: Refinement<unknown, Tag<A>> = (x): x is Tag<A> =>
       tags.includes(x as Tag<A>)
 

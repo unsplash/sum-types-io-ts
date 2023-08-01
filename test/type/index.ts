@@ -23,14 +23,14 @@ type B = Sum.Member<"B1"> | Sum.Member<"B2">
 const B = Sum.create<B>()
 
 const getCodecFromMappedNullaryTagPA = getCodecFromMappedNullaryTag(B)(
-  constant(O.none),
+  (i: "foo") => O.none,
   constant("foo"),
 )
 getCodecFromMappedNullaryTagPA([]) // $ExpectError
 getCodecFromMappedNullaryTagPA(["B1"]) // $ExpectError
 getCodecFromMappedNullaryTagPA(["B2"]) // $ExpectError
 getCodecFromMappedNullaryTagPA(["B1", "B1"]) // $ExpectError
-getCodecFromMappedNullaryTagPA(["B1", "B2"]) // $ExpectType Type<B, string, unknown>
+getCodecFromMappedNullaryTagPA(["B1", "B2"]) // $ExpectType Type<B, string, "foo">
 
 getCodecFromNullaryTag(B)([]) // $ExpectError
 getCodecFromNullaryTag(B)(["B1"]) // $ExpectError
