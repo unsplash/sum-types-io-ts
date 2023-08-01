@@ -156,7 +156,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  * type Country = "UK" | "Italy"
  *
  * const WeatherFromCountry: t.Type<Weather, Country> =
- *   getCodecFromMappedNullaryTag(Weather)<Country, unknown>(
+ *   getCodecFromMappedNullaryTag(Weather)(
  *     x => {
  *       switch (x) {
  *         case "Italy":
@@ -167,7 +167,7 @@ type EveryKeyPresent<A, B> = Array<A> extends B
  *           return O.none
  *       }
  *     },
- *     x => (x === "Sun" ? "Italy" : "UK"),
+ *     (x): Country => (x === "Sun" ? "Italy" : "UK"),
  *   )(["Sun", "Rain"])
  *
  * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))

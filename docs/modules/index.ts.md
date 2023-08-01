@@ -100,7 +100,7 @@ type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>
 const Weather = Sum.create<Weather>()
 type Country = 'UK' | 'Italy'
 
-const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTag(Weather)<Country, unknown>(
+const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTag(Weather)(
   (x) => {
     switch (x) {
       case 'Italy':
@@ -111,7 +111,7 @@ const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTa
         return O.none
     }
   },
-  (x) => (x === 'Sun' ? 'Italy' : 'UK')
+  (x): Country => (x === 'Sun' ? 'Italy' : 'UK')
 )(['Sun', 'Rain'])
 
 assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain))
