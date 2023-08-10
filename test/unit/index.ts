@@ -563,7 +563,7 @@ describe("index", () => {
       expect(c.is(false)).toBe(false)
       expect(c.is(123)).toBe(false)
       expect(c.is("123")).toBe(false)
-      expect(c.is({ tag: B, value: "123" })).toBe(false)
+      expect(c.is({ tag: "B", value: "123" })).toBe(false)
     })
 
     it("encodes", () => {
