@@ -561,8 +561,7 @@ export const getAdjacentlyTaggedCodec =
   ): t.Type<A, AdjacentlyTagged<K, V, A, C>> =>
     pipe(
       cs,
-      // NB `R.toArray` doesn't preserve object order.
-      Object.entries,
+      R.toArray,
       A.map(([tag, codec]) =>
         getAdjacentlyTaggedMemberCodec(tagKey)(valueKey)(sum)(tag as Tag<A>)(
           codec as t.Type<Value<A>>,
