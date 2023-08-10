@@ -24,6 +24,10 @@ type Tag<A> = A extends Sum.Member<infer B, any> ? B : never
 type Value<A> = A extends Sum.Member<any, infer B> ? B : never
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+type ValueByTag<A extends Sum.AnyMember, K extends Tag<A>> = Value<
+  Extract<A, Sum.Member<K, unknown>>
+>
+
 type NullaryMember = Sum.Member<string>
 
 type Primitive = string | number | boolean | bigint | undefined | null
@@ -357,3 +361,89 @@ export const getCodecFromNullaryTag =
       ),
       name,
     )
+
+/**
+ * Supports any encoded representation of nullary member values.
+ *
+ * @example
+ * Untagged<Weather, ...> = {} | { mm: number }
+ */
+type Untagged<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    B[Tag<A>] extends t.Type<any, infer C>
+    ? C
+    : never
+  : never
+
+const getUntaggedMemberCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(k: B) =>
+  <C>(c: t.Type<ValueByTag<A, B>, C>, name = "Sum"): t.Type<A, C> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === k && c.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          c.validate(i, ctx),
+          E.map(v =>
+            Sum.deserialize(sum)([k, v] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(Sum.serialize, x => x[1] as ValueByTag<A, B>, c.encode),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding directly to/from the member codecs.
+ *
+ * Should the types overlap, the first valid codec will succeed.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullaryFrom, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherFromRainfall = getUntaggedCodec(Weather)({
+ *   Rain: t.strict({ mm: t.number }),
+ *   // This codec will match any object so it needs to come last.
+ *   Sun: nullaryFrom({})(t.strict({})),
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherFromRainfall.decode({ mm: 123, foo: 'bar' }),
+ *   E.right(Weather.mk.Rain({ mm: 123 })),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherFromRainfall.decode({ foo: 'bar' }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getUntaggedCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A>>(cs: C, name = "Sum"): t.Type<A, Untagged<A, C>> =>
+    pipe(
+      cs,
+      // NB `R.toArray` doesn't preserve object order.
+      Object.entries,
+      A.map(([tag, codec]) =>
+        getUntaggedMemberCodec(sum)(tag as Tag<A>)(
+          codec as t.Type<Value<A>>,
+          name,
+        ),
+      ),
+      ([x, ...ys]) => union1([x, ...ys]),
+    ) as t.Type<A, Untagged<A, C>>

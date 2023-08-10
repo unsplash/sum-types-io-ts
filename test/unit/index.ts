@@ -9,6 +9,8 @@ import {
   getCodecFromMappedNullaryTag,
   getCodecFromPrimitiveMappedNullaryTag,
   getCodecFromNullaryTag,
+  getUntaggedCodec,
+  nullaryFrom,
 } from "../../src/index"
 import * as t from "io-ts"
 import { flow, pipe } from "fp-ts/function"
@@ -358,6 +360,98 @@ describe("index", () => {
     it("decodes known tag", () => {
       expect(pipe(c.decode("NA"), E.map(Sum.serialize))).toEqual(
         E.right(["NA", null]),
+      )
+    })
+  })
+
+  describe("getUntaggedCodec", () => {
+    type T = Sum.Member<"A"> | Sum.Member<"B", number>
+    const T = Sum.create<T>()
+    const {
+      mk: { A, B },
+    } = T
+
+    // Typically nullary members would be represented by null or an empty
+    // object, but we support anything for which a codec can be provided, so
+    // let's test that.
+    const c = getUntaggedCodec(T)({
+      A: nullaryFrom(false as const)(t.literal(false)),
+      B: NumberFromString,
+    })
+
+    it("type guards", () => {
+      expect(c.is(A)).toBe(true)
+      expect(c.is(B(123))).toBe(true)
+
+      expect(c.is("A")).toBe(false)
+      expect(c.is("B")).toBe(false)
+      expect(c.is({})).toBe(false)
+      expect(c.is(false)).toBe(false)
+      expect(c.is(123)).toBe(false)
+      expect(c.is("123")).toBe(false)
+      expect(c.is({ k: 123 })).toBe(false)
+      expect(c.is({ k: "123" })).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(A)).toBe(false)
+      expect(c.encode(B(123))).toEqual("123")
+    })
+
+    it("does not decode bad inputs", () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const f = flow(c.decode, E.isLeft)
+
+      expect(f("A")).toBe(true)
+      expect(f("B")).toBe(true)
+      expect(f(A)).toBe(true)
+      expect(f(B(123))).toBe(true)
+      expect(f({})).toBe(true)
+      expect(f(true)).toBe(true)
+      expect(f(123)).toBe(true)
+      expect(f({ x: "123" })).toBe(true)
+    })
+
+    it("decodes good inputs", () => {
+      expect(c.decode(false)).toEqual(E.right(A))
+
+      fc.assert(
+        fc.property(fc.integer({ min: 0 }), n =>
+          expect(c.decode(String(n))).toEqual(E.right(B(n))),
+        ),
+      )
+    })
+
+    it("tests codecs in input order", () => {
+      type T =
+        | Sum.Member<"N1">
+        | Sum.Member<"N2">
+        | Sum.Member<"U1", number>
+        | Sum.Member<"U2", number>
+      const T = Sum.create<T>()
+
+      const nc = nullaryFrom(false as const)(t.literal(false))
+      const ncs = {
+        N1: nc,
+        N2: nc,
+      }
+
+      const uc = NumberFromString
+      const ucs = {
+        U1: uc,
+        U2: uc,
+      }
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const f = flow(getUntaggedCodec(T), x => x.decode)
+
+      expect(f({ N1: nc, N2: nc, ...ucs })(false)).toEqual(E.right(T.mk.N1))
+      expect(f({ N2: nc, N1: nc, ...ucs })(false)).toEqual(E.right(T.mk.N2))
+      expect(f({ U1: uc, U2: uc, ...ncs })("123")).toEqual(
+        E.right(T.mk.U1(123)),
+      )
+      expect(f({ U2: uc, U1: uc, ...ncs })("123")).toEqual(
+        E.right(T.mk.U2(123)),
       )
     })
   })

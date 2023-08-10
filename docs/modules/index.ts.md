@@ -21,6 +21,7 @@ Added in v0.1.0
   - [getCodecFromPrimitiveMappedNullaryTag](#getcodecfromprimitivemappednullarytag)
   - [getCodecFromSerialized](#getcodecfromserialized)
   - [getSerializedCodec](#getserializedcodec)
+  - [getUntaggedCodec](#getuntaggedcodec)
   - [nullary](#nullary)
   - [nullaryFrom](#nullaryfrom)
 
@@ -207,6 +208,45 @@ export declare const getSerializedCodec: <A extends Sum.AnyMember>() => <B exten
 ```
 
 Added in v0.1.0
+
+## getUntaggedCodec
+
+Derive a codec for any given sum `A` provided codecs for all its members'
+values, decoding and encoding directly to/from the member codecs.
+
+Should the types overlap, the first valid codec will succeed.
+
+**Signature**
+
+```ts
+export declare const getUntaggedCodec: <A extends Sum.AnyMember>(
+  sum: Sum.Sum<A>
+) => <C extends MemberCodecs<A>>(cs: C, name?: string) => t.Type<A, Untagged<A, C>, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import * as Sum from '@unsplash/sum-types'
+import { nullaryFrom, getUntaggedCodec } from '@unsplash/sum-types-io-ts'
+import * as E from 'fp-ts/Either'
+
+type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', { mm: number }>
+const Weather = Sum.create<Weather>()
+
+const WeatherFromRainfall = getUntaggedCodec(Weather)({
+  Rain: t.strict({ mm: t.number }),
+  // This codec will match any object so it needs to come last.
+  Sun: nullaryFrom({})(t.strict({})),
+})
+
+assert.deepStrictEqual(WeatherFromRainfall.decode({ mm: 123, foo: 'bar' }), E.right(Weather.mk.Rain({ mm: 123 })))
+
+assert.deepStrictEqual(WeatherFromRainfall.decode({ foo: 'bar' }), E.right(Weather.mk.Sun))
+```
+
+Added in v0.7.0
 
 ## nullary
 
