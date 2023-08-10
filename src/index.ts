@@ -100,6 +100,29 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
     : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
 
 /**
+ * Fold a `MemberCodecs` struct to a union codec from left to right.
+ *
+ * This function isn't well typed, however absent this abstraction the call
+ * sites would still be riddled in assertions, making this tradeoff a win on
+ * ergonomic grounds.
+ */
+const foldToUnion =
+  <A extends Sum.AnyMember>(f: (x: [Tag<A>, t.Type<Value<A>>]) => t.Mixed) =>
+  (
+    cs: MemberCodecs<A>,
+    name = "Sum union",
+  ): t.UnionType<[t.Mixed, ...Array<t.Mixed>]> =>
+    pipe(
+      cs,
+      // NB `R.toArray` doesn't preserve object order.
+      Object.entries,
+      A.map(([k, v]) =>
+        f([k as Tag<A>, v as unknown as t.Type<ValueByTag<A, Tag<A>>>]),
+      ),
+      ([x, ...ys]) => union1([x, ...ys], name),
+    )
+
+/**
  * Derive a codec for nullary members to/from any other type. If the encoded
  * representation is `null` or forming part of an object then `nullary` can be
  * used instead.
@@ -148,11 +171,7 @@ export const getSerializedCodec =
     cs: B,
     name = "Serialized Sum",
   ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>> =>
-    pipe(
-      R.toArray(cs),
-      A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
-      ([x, ...ys]) => union1([x, ...ys], name),
-    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>>
+    foldToUnion<A>(flow(mapFst(t.literal), xs => t.tuple(xs)))(cs, name)
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -447,18 +466,9 @@ export const getExternallyTaggedCodec =
     cs: C,
     name = "Sum",
   ): t.Type<A, ExternallyTagged<A, C>> =>
-    pipe(
-      cs,
-      // NB `R.toArray` doesn't preserve object order.
-      Object.entries,
-      A.map(([tag, codec]) =>
-        getExternallyTaggedMemberCodec(sum)(tag as Tag<A>)(
-          codec as t.Type<Value<A>>,
-          name,
-        ),
-      ),
-      ([x, ...ys]) => union1([x, ...ys]),
-    ) as unknown as t.Type<A, ExternallyTagged<A, C>>
+    foldToUnion<A>(([tag, codec]) =>
+      getExternallyTaggedMemberCodec(sum)(tag)(codec, name),
+    )(cs, name)
 
 /**
  * Supports any encoded representation of nullary member values.
@@ -557,17 +567,9 @@ export const getAdjacentlyTaggedCodec =
     cs: C,
     name = "Sum",
   ): t.Type<A, AdjacentlyTagged<K, V, A, C>> =>
-    pipe(
-      cs,
-      R.toArray,
-      A.map(([tag, codec]) =>
-        getAdjacentlyTaggedMemberCodec(tagKey)(valueKey)(sum)(tag as Tag<A>)(
-          codec as t.Type<Value<A>>,
-          name,
-        ),
-      ),
-      ([x, ...ys]) => union1([x, ...ys]),
-    ) as unknown as t.Type<A, AdjacentlyTagged<K, V, A, C>>
+    foldToUnion<A>(([tag, codec]) =>
+      getAdjacentlyTaggedMemberCodec(tagKey)(valueKey)(sum)(tag)(codec, name),
+    )(cs, name)
 
 /**
  * Supports any encoded representation of nullary member values.
@@ -642,18 +644,9 @@ const getUntaggedMemberCodec =
 export const getUntaggedCodec =
   <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
   <C extends MemberCodecs<A>>(cs: C, name = "Sum"): t.Type<A, Untagged<A, C>> =>
-    pipe(
-      cs,
-      // NB `R.toArray` doesn't preserve object order.
-      Object.entries,
-      A.map(([tag, codec]) =>
-        getUntaggedMemberCodec(sum)(tag as Tag<A>)(
-          codec as t.Type<Value<A>>,
-          name,
-        ),
-      ),
-      ([x, ...ys]) => union1([x, ...ys]),
-    ) as t.Type<A, Untagged<A, C>>
+    foldToUnion<A>(([tag, codec]) =>
+      getUntaggedMemberCodec(sum)(tag)(codec, name),
+    )(cs, name)
 
 /**
  * Supports only empty objects as the encoded representation of nullary member
@@ -746,14 +739,6 @@ export const getInternallyTaggedCodec =
     cs: C,
     name = "Sum",
   ): t.Type<A, InternallyTagged<K, A, C>> =>
-    pipe(
-      cs,
-      R.toArray,
-      A.map(([tag, codec]) =>
-        getInternallyTaggedMemberCodec(tagKey)(sum)(tag as Tag<A>)(
-          codec as t.Type<Value<A>>,
-          name,
-        ),
-      ),
-      ([x, ...ys]) => union1([x, ...ys]),
-    ) as unknown as t.Type<A, InternallyTagged<K, A, C>>
+    foldToUnion<A>(([tag, codec]) =>
+      getInternallyTaggedMemberCodec(tagKey)(sum)(tag)(codec, name),
+    )(cs, name)
