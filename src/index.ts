@@ -128,13 +128,15 @@ export const nullaryFrom =
 
 /**
  * A representation of nullary member values that encodes to `undefined` for
- * better JSON interop.
+ * better JSON interop, and decodes from `undefined`, `null`, or empty objects
+ * (i.e. any object).
  *
  * @since 0.7.0
  */
-export const nullary: t.Type<null, undefined> = nullaryFrom(undefined)(
-  t.undefined,
-)
+export const nullary: t.Type<null, undefined | null | Record<string, unknown>> =
+  nullaryFrom<undefined | null | Record<string, unknown>>(undefined)(
+    t.union([t.undefined, t.null, t.type({})]),
+  )
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for

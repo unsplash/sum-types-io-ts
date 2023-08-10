@@ -335,12 +335,13 @@ Added in v0.7.0
 ## nullary
 
 A representation of nullary member values that encodes to `undefined` for
-better JSON interop.
+better JSON interop, and decodes from `undefined`, `null`, or empty objects
+(i.e. any object).
 
 **Signature**
 
 ```ts
-export declare const nullary: t.Type<null, undefined, unknown>
+export declare const nullary: t.Type<null, Record<string, unknown> | null | undefined, unknown>
 ```
 
 Added in v0.7.0
