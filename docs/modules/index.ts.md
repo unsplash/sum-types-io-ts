@@ -157,7 +157,6 @@ export declare const getCodecFromPrimitiveMappedNullaryTag: <A extends NullaryMe
 import * as t from 'io-ts'
 import * as Sum from '@unsplash/sum-types'
 import { getCodecFromPrimitiveMappedNullaryTag } from '@unsplash/sum-types-io-ts'
-import * as O from 'fp-ts/Option'
 import * as E from 'fp-ts/Either'
 
 type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain'>

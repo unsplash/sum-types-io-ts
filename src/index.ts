@@ -246,7 +246,6 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
  * import { getCodecFromPrimitiveMappedNullaryTag } from "@unsplash/sum-types-io-ts"
- * import * as O from "fp-ts/Option"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
