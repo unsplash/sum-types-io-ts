@@ -336,7 +336,7 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
  *
  * @since 0.5.0
- **/
+ */
 export const getCodecFromPrimitiveMappedNullaryTag =
   <A extends NullaryMember>(sum: Sum.Sum<A>) =>
   <B extends Primitive>(
