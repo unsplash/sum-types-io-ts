@@ -15,6 +15,7 @@ Added in v0.1.0
 - [utils](#utils)
   - [MappedType (class)](#mappedtype-class)
     - [\_tag (property)](#_tag-property)
+  - [getAdjacentlyTaggedCodec](#getadjacentlytaggedcodec)
   - [getCodec](#getcodec)
   - [getCodecFromMappedNullaryTag](#getcodecfrommappednullarytag)
   - [getCodecFromNullaryTag](#getcodecfromnullarytag)
@@ -57,6 +58,50 @@ readonly _tag: "@unsplash/sum-types-io-ts/MappedType"
 ```
 
 Added in v0.5.1
+
+## getAdjacentlyTaggedCodec
+
+Derive a codec for any given sum `A` provided codecs for all its members'
+values, decoding and encoding to an object with sibling member tags and
+values.
+
+Due to the distinct, isolated member tag, it's not possible for overlaps to
+occur.
+
+**Signature**
+
+```ts
+export declare const getAdjacentlyTaggedCodec: <K extends string>(
+  tagKey: K
+) => <V extends string>(
+  valueKey: V
+) => <A extends Sum.AnyMember>(
+  sum: Sum.Sum<A>
+) => <C extends MemberCodecs<A>>(cs: C, name?: string) => t.Type<A, AdjacentlyTagged<K, V, A, C>, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import * as Sum from '@unsplash/sum-types'
+import { nullary, getAdjacentlyTaggedCodec } from '@unsplash/sum-types-io-ts'
+import * as E from 'fp-ts/Either'
+
+type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', number>
+const Weather = Sum.create<Weather>()
+
+const WeatherCodec = getAdjacentlyTaggedCodec('tag')('value')(Weather)({
+  Sun: nullary,
+  Rain: t.number,
+})
+
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun', value: null }), E.right(Weather.mk.Sun))
+
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Rain', value: 123 }), E.right(Weather.mk.Rain(123)))
+```
+
+Added in v0.7.0
 
 ## getCodec
 
