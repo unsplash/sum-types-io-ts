@@ -366,6 +366,95 @@ export const getCodecFromNullaryTag =
  * Supports any encoded representation of nullary member values.
  *
  * @example
+ * ExternallyTagged<Weather, ...> = { Sun: null } | { Rain: { mm: number } }
+ */
+type ExternallyTagged<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { [_ in Tag<A>]: B[Tag<A>] extends t.Type<any, infer C> ? C : never }
+  : never
+
+const getExternallyTaggedMemberCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(k: B) =>
+  <C>(vc: t.Type<ValueByTag<A, B>, C>, name = "Sum"): t.Type<A, Record<B, C>> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === k && vc.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          t.strict({ [k]: vc }).validate(i, ctx),
+          E.map(x =>
+            Sum.deserialize(sum)([k, x[k]] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(
+        Sum.serialize,
+        ([k, v]) => ({ [k]: vc.encode(v as ValueByTag<A, B>) } as Record<B, C>),
+      ),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding to an object tagged by the sum member tag.
+ *
+ * Should the types overlap, the first valid codec will succeed.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullary, getExternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", number>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherCodec = getExternallyTaggedCodec(Weather)({
+ *   Sun: nullary,
+ *   Rain: t.number,
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ Sun: null }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ Rain: 123 }),
+ *   E.right(Weather.mk.Rain(123)),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getExternallyTaggedCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A>>(
+    cs: C,
+    name = "Sum",
+  ): t.Type<A, ExternallyTagged<A, C>> =>
+    pipe(
+      cs,
+      // NB `R.toArray` doesn't preserve object order.
+      Object.entries,
+      A.map(([tag, codec]) =>
+        getExternallyTaggedMemberCodec(sum)(tag as Tag<A>)(
+          codec as t.Type<Value<A>>,
+          name,
+        ),
+      ),
+      ([x, ...ys]) => union1([x, ...ys]),
+    ) as unknown as t.Type<A, ExternallyTagged<A, C>>
+
+/**
+ * Supports any encoded representation of nullary member values.
+ *
+ * @example
  * Untagged<Weather, ...> = {} | { mm: number }
  */
 type Untagged<

@@ -10,6 +10,7 @@ import {
   getCodecFromPrimitiveMappedNullaryTag,
   getCodecFromNullaryTag,
   getUntaggedCodec,
+  getExternallyTaggedCodec,
   nullaryFrom,
 } from "../../src/index"
 import * as t from "io-ts"
@@ -453,6 +454,77 @@ describe("index", () => {
       expect(f({ U2: uc, U1: uc, ...ncs })("123")).toEqual(
         E.right(T.mk.U2(123)),
       )
+    })
+  })
+
+  describe("getExternallyTaggedCodec", () => {
+    type T = Sum.Member<"A"> | Sum.Member<"B", number>
+    const T = Sum.create<T>()
+    const {
+      mk: { A, B },
+    } = T
+
+    // Typically nullary members would be represented by null or an empty
+    // object, but we support anything for which a codec can be provided, so
+    // let's test that.
+    const c = getExternallyTaggedCodec(T)({
+      A: nullaryFrom(false as const)(t.literal(false)),
+      B: NumberFromString,
+    })
+
+    it("type guards", () => {
+      expect(c.is(A)).toBe(true)
+      expect(c.is(B(123))).toBe(true)
+
+      expect(c.is("A")).toBe(false)
+      expect(c.is("B")).toBe(false)
+      expect(c.is({})).toBe(false)
+      expect(c.is(false)).toBe(false)
+      expect(c.is(123)).toBe(false)
+      expect(c.is("123")).toBe(false)
+      expect(c.is({ k: 123 })).toBe(false)
+      expect(c.is({ k: "123" })).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(A)).toEqual({ A: false })
+      expect(c.encode(B(123))).toEqual({ B: "123" })
+    })
+
+    it("does not decode bad inputs", () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const f = flow(c.decode, E.isLeft)
+
+      expect(f("A")).toBe(true)
+      expect(f("B")).toBe(true)
+      expect(f(A)).toBe(true)
+      expect(f(B(123))).toBe(true)
+      expect(f({})).toBe(true)
+      expect(f(false)).toBe(true)
+      expect(f("123")).toBe(true)
+    })
+
+    it("decodes good inputs", () => {
+      expect(c.decode({ A: false })).toEqual(E.right(A))
+
+      fc.assert(
+        fc.property(fc.integer({ min: 0 }), n =>
+          expect(c.decode({ B: String(n) })).toEqual(E.right(B(n))),
+        ),
+      )
+    })
+
+    it("tests codecs in input order", () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const f = flow(getExternallyTaggedCodec(T), x => x.decode)
+
+      const a = nullaryFrom(false as const)(t.literal(false))
+      const b = NumberFromString
+
+      const both = { A: false, B: "123" }
+
+      expect(f({ A: a, B: b })(both)).toEqual(E.right(T.mk.A))
+      expect(f({ B: b, A: a })(both)).toEqual(E.right(T.mk.B(123)))
     })
   })
 })
