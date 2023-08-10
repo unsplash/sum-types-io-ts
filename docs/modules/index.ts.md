@@ -22,6 +22,7 @@ Added in v0.1.0
   - [getCodecFromSerialized](#getcodecfromserialized)
   - [getSerializedCodec](#getserializedcodec)
   - [nullary](#nullary)
+  - [nullaryFrom](#nullaryfrom)
 
 ---
 
@@ -215,6 +216,33 @@ An alias for `t.null` for consistency alongside `nullaryFrom`.
 
 ```ts
 export declare const nullary: t.Type<null, null, unknown>
+```
+
+Added in v0.7.0
+
+## nullaryFrom
+
+Derive a codec for nullary members to/from any other type. Necessary for many
+object-based use cases. If the encoded representation is `null` then
+`nullary` can be directly used instead.
+
+**Signature**
+
+```ts
+export declare const nullaryFrom: <A>(to: A) => (from: t.Type<A, unknown, unknown>) => t.Type<null, A, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import { nullaryFrom } from '@unsplash/sum-types-io-ts'
+
+// This will decode any object to null and encode to an empty object.
+nullaryFrom({})(t.type({}))
+
+// Equivalent to `nullary`.
+nullaryFrom(null)(t.null)
 ```
 
 Added in v0.7.0

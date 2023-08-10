@@ -5,7 +5,7 @@
 /* eslint-disable functional/functional-parameters, functional/prefer-readonly-type, @typescript-eslint/unbound-method */
 
 import * as Sum from "@unsplash/sum-types"
-import { flow, pipe } from "fp-ts/function"
+import { constant, flow, pipe } from "fp-ts/function"
 import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
@@ -100,6 +100,33 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
  * @since 0.7.0
  */
 export const nullary: t.Type<null> = t.null
+
+/**
+ * Derive a codec for nullary members to/from any other type. Necessary for many
+ * object-based use cases. If the encoded representation is `null` then
+ * `nullary` can be directly used instead.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import { nullaryFrom } from "@unsplash/sum-types-io-ts"
+ *
+ * // This will decode any object to null and encode to an empty object.
+ * nullaryFrom({})(t.type({}))
+ *
+ * // Equivalent to `nullary`.
+ * nullaryFrom(null)(t.null)
+ *
+ * @since 0.7.0
+ */
+export const nullaryFrom =
+  <A>(to: A) =>
+  (from: t.Type<A, unknown>): t.Type<null, A, unknown> =>
+    new t.Type(
+      "foo",
+      nullary.is,
+      (i, c) => pipe(from.validate(i, c), E.map(constant(null))),
+      constant(to),
+    )
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
