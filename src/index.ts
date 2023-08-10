@@ -119,7 +119,7 @@ export const nullaryFrom =
   <A>(to: A) =>
   (from: t.Type<A, unknown>): t.Type<null, A, unknown> =>
     new t.Type(
-      "foo",
+      `nullaryFrom(${from.name})`,
       t.null.is,
       (i, c) => pipe(from.validate(i, c), E.map(constant(null))),
       constant(to),
