@@ -46,12 +46,13 @@ type EveryKeyPresent<A, B> = Array<A> extends B
 /**
  * An object from member tags to codecs of their values.
  *
- * We require codecs for members without values as well as we need all the keys
- * to be present at runtime, and taking `t.null` is more consistent and less
- * magical than any alternative.
+ * We require codecs for members without values as well as needing all of the
+ * keys to be present at runtime.
+ *
+ * `B` exists to support constraints on encoded representations.
  */
-type MemberCodecs<A extends Sum.AnyMember> = {
-  readonly [B in A as Tag<B>]: t.Type<Value<B>, unknown>
+type MemberCodecs<A extends Sum.AnyMember, B = unknown> = {
+  readonly [C in A as Tag<C>]: t.Type<Value<C>, B>
 }
 
 type OutputsOf<

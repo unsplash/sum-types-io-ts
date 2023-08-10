@@ -77,7 +77,7 @@ export declare const getAdjacentlyTaggedCodec: <K extends string>(
   valueKey: V
 ) => <A extends Sum.AnyMember>(
   sum: Sum.Sum<A>
-) => <C extends MemberCodecs<A>>(cs: C, name?: string) => t.Type<A, AdjacentlyTagged<K, V, A, C>, unknown>
+) => <C extends MemberCodecs<A, unknown>>(cs: C, name?: string) => t.Type<A, AdjacentlyTagged<K, V, A, C>, unknown>
 ```
 
 **Example**
@@ -113,7 +113,7 @@ values.
 ```ts
 export declare const getCodec: <A extends Sum.AnyMember>(
   sum: Sum.Sum<A>
-) => <B extends MemberCodecs<A>>(cs: B, name?: string) => t.Type<A, OutputsOf<A, B>, unknown>
+) => <B extends MemberCodecs<A, unknown>>(cs: B, name?: string) => t.Type<A, OutputsOf<A, B>, unknown>
 ```
 
 Added in v0.1.0
@@ -234,7 +234,7 @@ values, decoding and encoding to/from `Serialized<A>`.
 ```ts
 export declare const getCodecFromSerialized: <A extends Sum.AnyMember>(
   sum: Sum.Sum<A>
-) => <B extends MemberCodecs<A>>(cs: B, name?: string) => t.Type<A, Sum.Serialized<OutputsOf<A, B>>, unknown>
+) => <B extends MemberCodecs<A, unknown>>(cs: B, name?: string) => t.Type<A, Sum.Serialized<OutputsOf<A, B>>, unknown>
 ```
 
 Added in v0.1.0
@@ -251,7 +251,7 @@ Should the types overlap, the first valid codec will succeed.
 ```ts
 export declare const getExternallyTaggedCodec: <A extends Sum.AnyMember>(
   sum: Sum.Sum<A>
-) => <C extends MemberCodecs<A>>(cs: C, name?: string) => t.Type<A, ExternallyTagged<A, C>, unknown>
+) => <C extends MemberCodecs<A, unknown>>(cs: C, name?: string) => t.Type<A, ExternallyTagged<A, C>, unknown>
 ```
 
 **Example**
@@ -285,7 +285,7 @@ all its members` values.
 **Signature**
 
 ```ts
-export declare const getSerializedCodec: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A>>(
+export declare const getSerializedCodec: <A extends Sum.AnyMember>() => <B extends MemberCodecs<A, unknown>>(
   cs: B,
   name?: string
 ) => t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>, unknown>
@@ -305,7 +305,7 @@ Should the types overlap, the first valid codec will succeed.
 ```ts
 export declare const getUntaggedCodec: <A extends Sum.AnyMember>(
   sum: Sum.Sum<A>
-) => <C extends MemberCodecs<A>>(cs: C, name?: string) => t.Type<A, Untagged<A, C>, unknown>
+) => <C extends MemberCodecs<A, unknown>>(cs: C, name?: string) => t.Type<A, Untagged<A, C>, unknown>
 ```
 
 **Example**
