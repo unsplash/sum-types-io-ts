@@ -99,13 +99,6 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
     : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
 
 /**
- * An alias for `t.null` for consistency alongside `nullaryFrom`.
- *
- * @since 0.7.0
- */
-export const nullary: t.Type<null> = t.null
-
-/**
  * Derive a codec for nullary members to/from any other type. Necessary for many
  * object-based use cases. If the encoded representation is `null` then
  * `nullary` can be directly used instead.
@@ -127,10 +120,20 @@ export const nullaryFrom =
   (from: t.Type<A, unknown>): t.Type<null, A, unknown> =>
     new t.Type(
       "foo",
-      nullary.is,
+      t.null.is,
       (i, c) => pipe(from.validate(i, c), E.map(constant(null))),
       constant(to),
     )
+
+/**
+ * A representation of nullary member values that encodes to `undefined` for
+ * better JSON interop.
+ *
+ * @since 0.7.0
+ */
+export const nullary: t.Type<null, undefined> = nullaryFrom(undefined)(
+  t.undefined,
+)
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
@@ -389,7 +392,12 @@ const getExternallyTaggedMemberCodec =
         ),
       (i, ctx) =>
         pipe(
-          t.strict({ [k]: vc }).validate(i, ctx),
+          // Nullary/undefined will succeed on missing key, so we need to check
+          // that manually.
+          typeof i === "object" && i !== null && k in i
+            ? E.right(i)
+            : t.failure(i, ctx, `Missing key ${k}`),
+          E.chain(x => t.strict({ [k]: vc }).validate(x, ctx)),
           E.map(x =>
             Sum.deserialize(sum)([k, x[k]] as unknown as Sum.Serialized<A>),
           ),
@@ -421,7 +429,7 @@ const getExternallyTaggedMemberCodec =
  * })
  *
  * assert.deepStrictEqual(
- *   WeatherCodec.decode({ Sun: null }),
+ *   WeatherCodec.decode({ Sun: undefined }),
  *   E.right(Weather.mk.Sun),
  * )
  *
@@ -532,7 +540,7 @@ const getAdjacentlyTaggedMemberCodec =
  * })
  *
  * assert.deepStrictEqual(
- *   WeatherCodec.decode({ tag: "Sun", value: null }),
+ *   WeatherCodec.decode({ tag: "Sun" }),
  *   E.right(Weather.mk.Sun),
  * )
  *

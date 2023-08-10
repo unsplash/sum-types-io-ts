@@ -516,6 +516,14 @@ describe("index", () => {
       )
     })
 
+    it("requires key to be present even if nullary", () => {
+      type T = Sum.Member<"A">
+      const T = Sum.create<T>()
+      const c = getExternallyTaggedCodec(T)({ A: nullary })
+
+      expect(E.isLeft(c.decode({}))).toBe(true)
+    })
+
     it("tests codecs in input order", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       const f = flow(getExternallyTaggedCodec(T), x => x.decode)
@@ -596,12 +604,12 @@ describe("index", () => {
       const T = Sum.create<T>()
       const c = getAdjacentlyTaggedCodec("tag")("value")(T)
 
-      const cn = c({ A: nullary })
+      const cn = c({ A: t.null })
       expect(cn.decode({ tag: "A", value: null })).toEqual(E.right(T.mk.A))
       expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
       expect(cn.encode(T.mk.A)).toEqual({ tag: "A", value: null })
 
-      const cu = c({ A: nullaryFrom(undefined)(t.undefined) })
+      const cu = c({ A: nullary })
       expect(
         cu.decode({
           tag: "A",
@@ -618,7 +626,7 @@ describe("index", () => {
       const MaybeNum = Sum.create<Maybe<number>>()
       const c = getAdjacentlyTaggedCodec("_tag")("value")(MaybeNum)({
         Some: t.number,
-        None: nullaryFrom(undefined)(t.undefined),
+        None: nullary,
       })
 
       expect(c.decode(O.some(123))).toEqual(E.right(MaybeNum.mk.Some(123)))

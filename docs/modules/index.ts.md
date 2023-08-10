@@ -96,7 +96,7 @@ const WeatherCodec = getAdjacentlyTaggedCodec('tag')('value')(Weather)({
   Rain: t.number,
 })
 
-assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun', value: null }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun))
 
 assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Rain', value: 123 }), E.right(Weather.mk.Rain(123)))
 ```
@@ -270,7 +270,7 @@ const WeatherCodec = getExternallyTaggedCodec(Weather)({
   Rain: t.number,
 })
 
-assert.deepStrictEqual(WeatherCodec.decode({ Sun: null }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherCodec.decode({ Sun: undefined }), E.right(Weather.mk.Sun))
 
 assert.deepStrictEqual(WeatherCodec.decode({ Rain: 123 }), E.right(Weather.mk.Rain(123)))
 ```
@@ -334,12 +334,13 @@ Added in v0.7.0
 
 ## nullary
 
-An alias for `t.null` for consistency alongside `nullaryFrom`.
+A representation of nullary member values that encodes to `undefined` for
+better JSON interop.
 
 **Signature**
 
 ```ts
-export declare const nullary: t.Type<null, null, unknown>
+export declare const nullary: t.Type<null, undefined, unknown>
 ```
 
 Added in v0.7.0
