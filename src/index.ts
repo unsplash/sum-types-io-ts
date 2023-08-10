@@ -377,7 +377,7 @@ type ExternallyTagged<
   B extends MemberCodecs<A>,
 > = A extends Sum.AnyMember
   ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { [_ in Tag<A>]: B[Tag<A>] extends t.Type<any, infer C> ? C : never }
+    Record<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
   : never
 
 const getExternallyTaggedMemberCodec =
@@ -472,12 +472,9 @@ type AdjacentlyTagged<
   A extends Sum.AnyMember,
   B extends MemberCodecs<A>,
 > = A extends Sum.AnyMember
-  ? {
-      [_ in K]: Tag<A>
-    } & {
+  ? Record<K, Tag<A>> &
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      [_ in V]: B[Tag<A>] extends t.Type<any, infer C> ? C : never
-    }
+      Record<V, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
   : never
 
 const getAdjacentlyTaggedMemberCodec =
@@ -670,10 +667,8 @@ type InternallyTagged<
   A extends Sum.AnyMember,
   B extends MemberCodecs<A>,
 > = A extends Sum.AnyMember
-  ? {
-      [_ in K]: Tag<A>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } & (B[Tag<A>] extends t.Type<any, infer C> ? C : never)
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Record<K, Tag<A>> & (B[Tag<A>] extends t.Type<any, infer C> ? C : never)
   : never
 
 const getInternallyTaggedMemberCodec =
