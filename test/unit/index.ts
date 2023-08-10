@@ -608,7 +608,10 @@ describe("index", () => {
       const cx = c({ A: nullary })
       expect(cx.decode({ tag: "A" })).toEqual(E.right(T.mk.A))
       expect(cx.decode({ tag: "A", foo: "bar" })).toEqual(E.right(T.mk.A))
-      expect(cx.encode(T.mk.A)).not.toStrictEqual({ tag: "A", value: undefined })
+      expect(cx.encode(T.mk.A)).not.toStrictEqual({
+        tag: "A",
+        value: undefined,
+      })
       expect(cx.encode(T.mk.A)).toStrictEqual({ tag: "A" })
     })
   })
