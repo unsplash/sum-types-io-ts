@@ -71,12 +71,10 @@ const unknownSerialize = (
 }
 
 /**
- * Excess property checking at function boundaries should protect us against
- * excess keys, however without an assertion, encapsulated here, `Object.keys`
- * will still err on the side of caution and widen `Array<Tag<A>>` to
- * `Array<string>`.
+ * Without an assertion, encapsulated here, `Object.keys` will err on the side
+ * of caution and widen `Array<Tag<A>>` to `Array<string>`.
  */
-const getTags: <A extends Sum.AnyMember>(
+const unsafeGetTags: <A extends Sum.AnyMember>(
   x: Record<Tag<A>, unknown>,
 ) => Array<Tag<A>> = Object.keys
 
@@ -355,7 +353,7 @@ export const getCodecFromPrimitiveMappedNullaryTag =
     const codec = getCodecFromMappedNullaryTag(sum)(
       x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
-    )(getTags(tos), name)
+    )(unsafeGetTags(tos), name)
 
     return new MappedType(
       codec.name,
