@@ -396,7 +396,7 @@ const getExternallyTaggedMemberCodec =
           // that manually.
           typeof i === "object" && i !== null && k in i
             ? E.right(i)
-            : t.failure(i, ctx, `Missing key ${k}`),
+            : t.failure(i, ctx, `Missing key "${k}"`),
           E.chain(x => t.strict({ [k]: vc }).validate(x, ctx)),
           E.map(x =>
             Sum.deserialize(sum)([k, x[k]] as unknown as Sum.Serialized<A>),
