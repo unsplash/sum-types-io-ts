@@ -76,6 +76,25 @@ const getTags: <A extends Sum.AnyMember>(
 ) => Array<Tag<A>> = Object.keys
 
 /**
+ * Unlike `t.union` this requires only at least one member rather than two.
+ */
+const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
+  xs: A,
+  name = "union1",
+): t.UnionType<A, t.TypeOf<A[number]>, t.OutputOf<A[number]>> =>
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  xs[1] === undefined
+    ? (new t.UnionType(
+        name,
+        xs[0].is,
+        xs[0].validate,
+        xs[0].encode,
+        xs,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ) as any)
+    : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
+
+/**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
  * all its members` values.
  *
@@ -90,7 +109,7 @@ export const getSerializedCodec =
     pipe(
       R.toArray(cs),
       A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
-      ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
+      ([x, ...ys]) => union1([x, ...ys], name),
     ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>>
 
 /**
