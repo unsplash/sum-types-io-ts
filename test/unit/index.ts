@@ -11,6 +11,7 @@ import {
   getCodecFromNullaryTag,
   getUntaggedCodec,
   getExternallyTaggedCodec,
+  getInternallyTaggedCodec,
   getAdjacentlyTaggedCodec,
   nullary,
   nullaryFrom,
@@ -535,6 +536,80 @@ describe("index", () => {
 
       expect(f({ A: a, B: b })(both)).toEqual(E.right(T.mk.A))
       expect(f({ B: b, A: a })(both)).toEqual(E.right(T.mk.B(123)))
+    })
+  })
+
+  describe("getInternallyTaggedCodec", () => {
+    type T = Sum.Member<"A"> | Sum.Member<"B", { readonly foo: number }>
+    const T = Sum.create<T>()
+    const {
+      mk: { A, B },
+    } = T
+
+    const c = getInternallyTaggedCodec("tag")(T)({
+      A: nullary,
+      B: t.strict({ foo: NumberFromString }),
+    })
+
+    it("type guards", () => {
+      expect(c.is(A)).toBe(true)
+      expect(c.is(B({ foo: 123 }))).toBe(true)
+
+      expect(c.is("A")).toBe(false)
+      expect(c.is("B")).toBe(false)
+      expect(c.is({})).toBe(false)
+      expect(c.is(false)).toBe(false)
+      expect(c.is(123)).toBe(false)
+      expect(c.is("123")).toBe(false)
+      expect(c.is({ tag: "B", foo: "123" })).toBe(false)
+    })
+
+    it("encodes", () => {
+      expect(c.encode(A)).toEqual({ tag: "A" })
+      expect(c.encode(B({ foo: 123 }))).toEqual({ tag: "B", foo: "123" })
+    })
+
+    it("does not decode bad inputs", () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const f = flow(c.decode, E.isLeft)
+
+      expect(f("A")).toBe(true)
+      expect(f("B")).toBe(true)
+      expect(f(A)).toBe(true)
+      expect(f(B({ foo: 123 }))).toBe(true)
+      expect(f({})).toBe(true)
+      expect(f(false)).toBe(true)
+      expect(f("123")).toBe(true)
+      expect(f({ tag: "B", foo: 123 })).toBe(true)
+    })
+
+    it("decodes good inputs", () => {
+      expect(c.decode({ tag: "A" })).toEqual(E.right(A))
+
+      fc.assert(
+        fc.property(fc.integer({ min: 0 }), n =>
+          expect(c.decode({ tag: "B", foo: String(n) })).toEqual(
+            E.right(B({ foo: n })),
+          ),
+        ),
+      )
+    })
+
+    // This is partially for documentative purposes.
+    it("handles different nullary encodings", () => {
+      type T = Sum.Member<"A">
+      const T = Sum.create<T>()
+      const c = getInternallyTaggedCodec("tag")(T)
+
+      const cn = c({ A: t.null })
+      expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
+      expect(cn.encode(T.mk.A)).toEqual({ tag: "A" })
+
+      const cx = c({ A: nullary })
+      expect(cx.decode({ tag: "A" })).toEqual(E.right(T.mk.A))
+      expect(cx.decode({ tag: "A", foo: "bar" })).toEqual(E.right(T.mk.A))
+      expect(cx.encode(T.mk.A)).not.toStrictEqual({ tag: "A", value: undefined })
+      expect(cx.encode(T.mk.A)).toStrictEqual({ tag: "A" })
     })
   })
 

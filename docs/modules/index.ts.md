@@ -22,6 +22,7 @@ Added in v0.1.0
   - [getCodecFromPrimitiveMappedNullaryTag](#getcodecfromprimitivemappednullarytag)
   - [getCodecFromSerialized](#getcodecfromserialized)
   - [getExternallyTaggedCodec](#getexternallytaggedcodec)
+  - [getInternallyTaggedCodec](#getinternallytaggedcodec)
   - [getSerializedCodec](#getserializedcodec)
   - [getUntaggedCodec](#getuntaggedcodec)
   - [nullary](#nullary)
@@ -273,6 +274,51 @@ const WeatherCodec = getExternallyTaggedCodec(Weather)({
 assert.deepStrictEqual(WeatherCodec.decode({ Sun: undefined }), E.right(Weather.mk.Sun))
 
 assert.deepStrictEqual(WeatherCodec.decode({ Rain: 123 }), E.right(Weather.mk.Rain(123)))
+```
+
+Added in v0.7.0
+
+## getInternallyTaggedCodec
+
+Derive a codec for any given sum `A` provided codecs for all its members'
+values, decoding and encoding to an object with sibling member tags and
+values.
+
+Due to the distinct, isolated member tag, it's not possible for overlaps to
+occur.
+
+**Signature**
+
+```ts
+export declare const getInternallyTaggedCodec: <K extends string>(
+  tagKey: K
+) => <A extends Sum.AnyMember>(
+  sum: Sum.Sum<A>
+) => <C extends MemberCodecs<A, Record<string, unknown> | null | undefined>>(
+  cs: C,
+  name?: string
+) => t.Type<A, InternallyTagged<K, A, C>, unknown>
+```
+
+**Example**
+
+```ts
+import * as t from 'io-ts'
+import * as Sum from '@unsplash/sum-types'
+import { nullary, getInternallyTaggedCodec } from '@unsplash/sum-types-io-ts'
+import * as E from 'fp-ts/Either'
+
+type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', { mm: number }>
+const Weather = Sum.create<Weather>()
+
+const WeatherCodec = getInternallyTaggedCodec('tag')(Weather)({
+  Sun: nullary,
+  Rain: t.strict({ mm: t.number }),
+})
+
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun))
+
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Rain', mm: 123 }), E.right(Weather.mk.Rain({ mm: 123 })))
 ```
 
 Added in v0.7.0

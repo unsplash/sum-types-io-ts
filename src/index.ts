@@ -659,3 +659,108 @@ export const getUntaggedCodec =
       ),
       ([x, ...ys]) => union1([x, ...ys]),
     ) as t.Type<A, Untagged<A, C>>
+
+/**
+ * Supports only empty objects as the encoded representation of nullary member
+ * values.
+ *
+ * @example
+ * InternallyTagged<"k", Weather, ...> = { k: Sun } | { k: Rain; mm: number }
+ */
+type InternallyTagged<
+  K extends string,
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? {
+      [_ in K]: Tag<A>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } & (B[Tag<A>] extends t.Type<any, infer C> ? C : never)
+  : never
+
+const getInternallyTaggedMemberCodec =
+  <K extends string>(tagKey: K) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(tag: B) =>
+  <C>(
+    vc: t.Type<ValueByTag<A, B>, C>,
+    name = "Sum",
+  ): t.Type<A, Record<K, B> & C> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === tag && vc.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          t.type({ [tagKey]: t.literal(tag) }).validate(i, ctx),
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          E.chain(({ [tagKey]: _, ...rest }) => vc.validate(rest, ctx)),
+          E.map(x =>
+            Sum.deserialize(sum)([tag, x] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(
+        Sum.serialize,
+        ([k, v]) =>
+          ({
+            [tagKey]: k,
+            ...vc.encode(v as ValueByTag<A, B>),
+          } as Record<K, B> & C),
+      ),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding to an object with sibling member tags and
+ * values.
+ *
+ * Due to the distinct, isolated member tag, it's not possible for overlaps to
+ * occur.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullary, getInternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherCodec = getInternallyTaggedCodec("tag")(Weather)({
+ *   Sun: nullary,
+ *   Rain: t.strict({ mm: t.number }),
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Sun" }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Rain", mm: 123 }),
+ *   E.right(Weather.mk.Rain({ mm: 123 })),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getInternallyTaggedCodec =
+  <K extends string>(tagKey: K) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A, Record<string, unknown> | null | undefined>>(
+    cs: C,
+    name = "Sum",
+  ): t.Type<A, InternallyTagged<K, A, C>> =>
+    pipe(
+      cs,
+      R.toArray,
+      A.map(([tag, codec]) =>
+        getInternallyTaggedMemberCodec(tagKey)(sum)(tag as Tag<A>)(
+          codec as t.Type<Value<A>>,
+          name,
+        ),
+      ),
+      ([x, ...ys]) => union1([x, ...ys]),
+    ) as unknown as t.Type<A, InternallyTagged<K, A, C>>
