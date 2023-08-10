@@ -29,6 +29,17 @@ type NullaryMember = Sum.Member<string>
 type Primitive = string | number | boolean | bigint | undefined | null
 
 /**
+ * Ensures that every key in union `A` is present at least once in array `B`.
+ *
+ * @link https://github.com/Microsoft/TypeScript/issues/13298#issuecomment-468733257
+ */
+type EveryKeyPresent<A, B> = Array<A> extends B
+  ? B extends Array<A>
+    ? B
+    : never
+  : never
+
+/**
  * An object from member tags to codecs of their values.
  *
  * We require codecs for members without values as well as we need all the keys
@@ -126,17 +137,6 @@ export const getCodec =
       ),
     )
   }
-
-/**
- * Ensures that every key in union `A` is present at least once in array `B`.
- *
- * @link https://github.com/Microsoft/TypeScript/issues/13298#issuecomment-468733257
- */
-type EveryKeyPresent<A, B> = Array<A> extends B
-  ? B extends Array<A>
-    ? B
-    : never
-  : never
 
 /**
  * Derive a codec for any given sum `A` in which all the constructors are
