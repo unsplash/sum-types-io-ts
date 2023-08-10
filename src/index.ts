@@ -100,19 +100,17 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
     : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
 
 /**
- * Derive a codec for nullary members to/from any other type. Necessary for many
- * object-based use cases. If the encoded representation is `null` then
- * `nullary` can be directly used instead.
+ * Derive a codec for nullary members to/from any other type. If the encoded
+ * representation is `null` or forming part of an object then `nullary` can be
+ * used instead.
  *
  * @example
  * import * as t from "io-ts"
  * import { nullaryFrom } from "@unsplash/sum-types-io-ts"
  *
- * // This will decode any object to null and encode to an empty object.
+ * // This will decode any object to null and encode to an empty object. Instead
+ * // consider `nullary`.
  * nullaryFrom({})(t.type({}))
- *
- * // Equivalent to `nullary`.
- * nullaryFrom(null)(t.null)
  *
  * @since 0.7.0
  */
@@ -620,7 +618,7 @@ const getUntaggedMemberCodec =
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { nullaryFrom, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import { nullary, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
@@ -629,7 +627,7 @@ const getUntaggedMemberCodec =
  * const WeatherFromRainfall = getUntaggedCodec(Weather)({
  *   Rain: t.strict({ mm: t.number }),
  *   // This codec will match any object so it needs to come last.
- *   Sun: nullaryFrom({})(t.strict({})),
+ *   Sun: nullary,
  * })
  *
  * assert.deepStrictEqual(
