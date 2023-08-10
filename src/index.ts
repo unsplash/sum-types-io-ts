@@ -95,6 +95,13 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
     : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
 
 /**
+ * An alias for `t.null` for consistency alongside `nullaryFrom`.
+ *
+ * @since 0.7.0
+ */
+export const nullary: t.Type<null> = t.null
+
+/**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
  * all its members` values.
  *

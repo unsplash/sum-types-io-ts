@@ -21,6 +21,7 @@ Added in v0.1.0
   - [getCodecFromPrimitiveMappedNullaryTag](#getcodecfromprimitivemappednullarytag)
   - [getCodecFromSerialized](#getcodecfromserialized)
   - [getSerializedCodec](#getserializedcodec)
+  - [nullary](#nullary)
 
 ---
 
@@ -205,3 +206,15 @@ export declare const getSerializedCodec: <A extends Sum.AnyMember>() => <B exten
 ```
 
 Added in v0.1.0
+
+## nullary
+
+An alias for `t.null` for consistency alongside `nullaryFrom`.
+
+**Signature**
+
+```ts
+export declare const nullary: t.Type<null, null, unknown>
+```
+
+Added in v0.7.0
