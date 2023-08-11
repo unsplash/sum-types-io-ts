@@ -5,7 +5,7 @@
 /* eslint-disable functional/functional-parameters, functional/prefer-readonly-type, @typescript-eslint/unbound-method */
 
 import * as Sum from "@unsplash/sum-types"
-import { flow, pipe } from "fp-ts/function"
+import { constant, flow, pipe } from "fp-ts/function"
 import * as t from "io-ts"
 import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
@@ -24,19 +24,35 @@ type Tag<A> = A extends Sum.Member<infer B, any> ? B : never
 type Value<A> = A extends Sum.Member<any, infer B> ? B : never
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+type ValueByTag<A extends Sum.AnyMember, K extends Tag<A>> = Value<
+  Extract<A, Sum.Member<K, unknown>>
+>
+
 type NullaryMember = Sum.Member<string>
 
 type Primitive = string | number | boolean | bigint | undefined | null
 
 /**
+ * Ensures that every key in union `A` is present at least once in array `B`.
+ *
+ * @link https://github.com/Microsoft/TypeScript/issues/13298#issuecomment-468733257
+ */
+type EveryKeyPresent<A, B> = Array<A> extends B
+  ? B extends Array<A>
+    ? B
+    : never
+  : never
+
+/**
  * An object from member tags to codecs of their values.
  *
- * We require codecs for members without values as well as we need all the keys
- * to be present at runtime, and taking `t.null` is more consistent and less
- * magical than any alternative.
+ * We require codecs for members without values as well as needing all of the
+ * keys to be present at runtime.
+ *
+ * `B` exists to support constraints on encoded representations.
  */
-type MemberCodecs<A extends Sum.AnyMember> = {
-  readonly [B in A as Tag<B>]: t.Type<Value<B>, unknown>
+type MemberCodecs<A extends Sum.AnyMember, B = unknown> = {
+  readonly [C in A as Tag<C>]: t.Type<Value<C>, B>
 }
 
 type OutputsOf<
@@ -55,6 +71,95 @@ const unknownSerialize = (
 }
 
 /**
+ * Without an assertion, encapsulated here, `Object.keys` will err on the side
+ * of caution and widen `Array<Tag<A>>` to `Array<string>`.
+ */
+const unsafeGetTags: <A extends Sum.AnyMember>(
+  x: Record<Tag<A>, unknown>,
+) => Array<Tag<A>> = Object.keys
+
+/**
+ * Unlike `t.union` this requires only at least one member rather than two.
+ */
+const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
+  xs: A,
+  name = "union1",
+): t.UnionType<A, t.TypeOf<A[number]>, t.OutputOf<A[number]>> =>
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  xs[1] === undefined
+    ? (new t.UnionType(
+        name,
+        xs[0].is,
+        xs[0].validate,
+        xs[0].encode,
+        xs,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ) as any)
+    : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
+
+/**
+ * Fold a `MemberCodecs` struct to a union codec from left to right.
+ *
+ * This function isn't well typed, however absent this abstraction the call
+ * sites would still be riddled in assertions, making this tradeoff a win on
+ * ergonomic grounds.
+ */
+const foldToUnion =
+  <A extends Sum.AnyMember>(f: (x: [Tag<A>, t.Type<Value<A>>]) => t.Mixed) =>
+  (
+    cs: MemberCodecs<A>,
+    name = "Sum union",
+  ): t.UnionType<[t.Mixed, ...Array<t.Mixed>]> =>
+    pipe(
+      cs,
+      // NB `R.toArray` doesn't preserve object order.
+      Object.entries,
+      A.map(([k, v]) =>
+        f([k as Tag<A>, v as unknown as t.Type<ValueByTag<A, Tag<A>>>]),
+      ),
+      ([x, ...ys]) => union1([x, ...ys], name),
+    )
+
+/**
+ * Derive a codec for nullary members to/from any other type. If the encoded
+ * representation forms part of an object then `nullaryFromEmpty` can be used
+ * instead. Incompatible with `Serialized` if not encoding to `null`.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import { nullaryFrom } from "@unsplash/sum-types-io-ts"
+ *
+ * // This will decode any object to null and encode to an empty object. Instead
+ * // consider `nullaryFromEmpty`.
+ * nullaryFrom({})(t.type({}))
+ *
+ * @since 0.7.0
+ */
+export const nullaryFrom =
+  <A>(to: A) =>
+  (from: t.Type<A, unknown>): t.Type<null, A, unknown> =>
+    new t.Type(
+      `nullaryFrom(${from.name})`,
+      t.null.is,
+      (i, c) => pipe(from.validate(i, c), E.map(constant(null))),
+      constant(to),
+    )
+
+/**
+ * A representation of nullary member values that encodes to `undefined` for
+ * better JSON interop, and decodes from `undefined`, `null`, or empty objects
+ * (i.e. any object). Incompatible with `Serialized`.
+ *
+ * @since 0.7.0
+ */
+export const nullaryFromEmpty: t.Type<
+  null,
+  undefined | null | Record<string, unknown>
+> = nullaryFrom<undefined | null | Record<string, unknown>>(undefined)(
+  t.union([t.undefined, t.null, t.type({})]),
+)
+
+/**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
  * all its members` values.
  *
@@ -66,11 +171,7 @@ export const getSerializedCodec =
     cs: B,
     name = "Serialized Sum",
   ): t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>> =>
-    pipe(
-      R.toArray(cs),
-      A.map(flow(mapFst(t.literal), xs => t.tuple(xs))),
-      ([x, y, ...zs]) => (y === undefined ? x : t.union([x, y, ...zs], name)),
-    ) as unknown as t.Type<Sum.Serialized<A>, Sum.Serialized<OutputsOf<A, B>>>
+    foldToUnion<A>(flow(mapFst(t.literal), xs => t.tuple(xs)))(cs, name)
 
 /**
  * Derive a codec for any given sum `A` provided codecs for all its members'
@@ -126,17 +227,6 @@ export const getCodec =
       ),
     )
   }
-
-/**
- * Ensures that every key in union `A` is present at least once in array `B`.
- *
- * @link https://github.com/Microsoft/TypeScript/issues/13298#issuecomment-468733257
- */
-type EveryKeyPresent<A, B> = Array<A> extends B
-  ? B extends Array<A>
-    ? B
-    : never
-  : never
 
 /**
  * Derive a codec for any given sum `A` in which all the constructors are
@@ -236,7 +326,6 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
  * import { getCodecFromPrimitiveMappedNullaryTag } from "@unsplash/sum-types-io-ts"
- * import * as O from "fp-ts/Option"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain">
@@ -249,7 +338,7 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
  *
  * @since 0.5.0
- **/
+ */
 export const getCodecFromPrimitiveMappedNullaryTag =
   <A extends NullaryMember>(sum: Sum.Sum<A>) =>
   <B extends Primitive>(
@@ -266,7 +355,7 @@ export const getCodecFromPrimitiveMappedNullaryTag =
     const codec = getCodecFromMappedNullaryTag(sum)(
       x => Map.lookup(eqStrict)(x)(froms),
       x => tos[x],
-    )(Object.keys(tos) as Array<Tag<A>>, name)
+    )(unsafeGetTags(tos), name)
 
     return new MappedType(
       codec.name,
@@ -295,3 +384,361 @@ export const getCodecFromNullaryTag =
       ),
       name,
     )
+
+/**
+ * Supports any encoded representation of nullary member values.
+ *
+ * @example
+ * ExternallyTagged<Weather, ...> = { Sun: null } | { Rain: { mm: number } }
+ */
+type ExternallyTagged<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Record<Tag<A>, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
+  : never
+
+const getExternallyTaggedMemberCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(k: B) =>
+  <C>(vc: t.Type<ValueByTag<A, B>, C>, name = "Sum"): t.Type<A, Record<B, C>> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === k && vc.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          // Nullary/undefined will succeed on missing key, so we need to check
+          // that manually.
+          typeof i === "object" && i !== null && k in i
+            ? E.right(i)
+            : t.failure(i, ctx, `Missing key "${k}"`),
+          E.chain(x => t.strict({ [k]: vc }).validate(x, ctx)),
+          E.map(x =>
+            Sum.deserialize(sum)([k, x[k]] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(
+        Sum.serialize,
+        ([k, v]) => ({ [k]: vc.encode(v as ValueByTag<A, B>) } as Record<B, C>),
+      ),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding to an object tagged by the sum member tag.
+ *
+ * Should the types overlap, the first valid codec will succeed.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullaryFromEmpty, getExternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", number>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherCodec = getExternallyTaggedCodec(Weather)({
+ *   Sun: nullaryFromEmpty,
+ *   Rain: t.number,
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ Sun: undefined }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ Rain: 123 }),
+ *   E.right(Weather.mk.Rain(123)),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getExternallyTaggedCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A>>(
+    cs: C,
+    name = "Sum",
+  ): t.Type<A, ExternallyTagged<A, C>> =>
+    foldToUnion<A>(([tag, codec]) =>
+      getExternallyTaggedMemberCodec(sum)(tag)(codec, name),
+    )(cs, name)
+
+/**
+ * Supports any encoded representation of nullary member values.
+ *
+ * @example
+ * AdjacentlyTagged<"k", "v", Weather, ...> = { k: Sun; v: null } | { k: Rain; v: { mm: number } }
+ */
+type AdjacentlyTagged<
+  K extends string,
+  V extends string,
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? Record<K, Tag<A>> &
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Record<V, B[Tag<A>] extends t.Type<any, infer C> ? C : never>
+  : never
+
+const getAdjacentlyTaggedMemberCodec =
+  <K extends string>(tagKey: K) =>
+  <V extends string>(valueKey: V) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(tag: B) =>
+  <C>(
+    vc: t.Type<ValueByTag<A, B>, C>,
+    name = "Sum",
+  ): t.Type<A, Record<K, B> & Record<V, C>> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === tag && vc.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          t
+            .strict({ [tagKey]: t.literal(tag), [valueKey]: vc })
+            .validate(i, ctx),
+          E.map(x =>
+            Sum.deserialize(sum)([
+              tag,
+              x[valueKey],
+            ] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(
+        Sum.serialize,
+        ([k, v]) =>
+          ({
+            [tagKey]: k,
+            [valueKey]: vc.encode(v as ValueByTag<A, B>),
+          } as Record<K, B> & Record<V, C>),
+      ),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding to an object with sibling member tags and
+ * values.
+ *
+ * Due to the distinct, isolated member tag, it's not possible for overlaps to
+ * occur.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullaryFromEmpty, getAdjacentlyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", number>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherCodec = getAdjacentlyTaggedCodec("tag")("value")(Weather)({
+ *   Sun: nullaryFromEmpty,
+ *   Rain: t.number,
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Sun" }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Rain", value: 123 }),
+ *   E.right(Weather.mk.Rain(123)),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getAdjacentlyTaggedCodec =
+  <K extends string>(tagKey: K) =>
+  <V extends string>(valueKey: V) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A>>(
+    cs: C,
+    name = "Sum",
+  ): t.Type<A, AdjacentlyTagged<K, V, A, C>> =>
+    foldToUnion<A>(([tag, codec]) =>
+      getAdjacentlyTaggedMemberCodec(tagKey)(valueKey)(sum)(tag)(codec, name),
+    )(cs, name)
+
+/**
+ * Supports any encoded representation of nullary member values.
+ *
+ * @example
+ * Untagged<Weather, ...> = {} | { mm: number }
+ */
+type Untagged<
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    B[Tag<A>] extends t.Type<any, infer C>
+    ? C
+    : never
+  : never
+
+const getUntaggedMemberCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(k: B) =>
+  <C>(c: t.Type<ValueByTag<A, B>, C>, name = "Sum"): t.Type<A, C> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === k && c.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          c.validate(i, ctx),
+          E.map(v =>
+            Sum.deserialize(sum)([k, v] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(Sum.serialize, x => x[1] as ValueByTag<A, B>, c.encode),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding directly to/from the member codecs.
+ *
+ * Should the types overlap, the first valid codec will succeed.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullaryFromEmpty, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherFromRainfall = getUntaggedCodec(Weather)({
+ *   Rain: t.strict({ mm: t.number }),
+ *   // This codec will match any object so it needs to come last.
+ *   Sun: nullaryFromEmpty,
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherFromRainfall.decode({ mm: 123, foo: 'bar' }),
+ *   E.right(Weather.mk.Rain({ mm: 123 })),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherFromRainfall.decode({ foo: 'bar' }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getUntaggedCodec =
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A>>(cs: C, name = "Sum"): t.Type<A, Untagged<A, C>> =>
+    foldToUnion<A>(([tag, codec]) =>
+      getUntaggedMemberCodec(sum)(tag)(codec, name),
+    )(cs, name)
+
+/**
+ * Supports only empty objects as the encoded representation of nullary member
+ * values.
+ *
+ * @example
+ * InternallyTagged<"k", Weather, ...> = { k: Sun } | { k: Rain; mm: number }
+ */
+type InternallyTagged<
+  K extends string,
+  A extends Sum.AnyMember,
+  B extends MemberCodecs<A>,
+> = A extends Sum.AnyMember
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Record<K, Tag<A>> & (B[Tag<A>] extends t.Type<any, infer C> ? C : never)
+  : never
+
+const getInternallyTaggedMemberCodec =
+  <K extends string>(tagKey: K) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <B extends Tag<A>>(tag: B) =>
+  <C>(
+    vc: t.Type<ValueByTag<A, B>, C>,
+    name = "Sum",
+  ): t.Type<A, Record<K, B> & C> =>
+    new t.Type(
+      name,
+      (x): x is A =>
+        pipe(
+          unknownSerialize(x),
+          O.exists(y => y[0] === tag && vc.is(y[1])),
+        ),
+      (i, ctx) =>
+        pipe(
+          t.type({ [tagKey]: t.literal(tag) }).validate(i, ctx),
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          E.chain(({ [tagKey]: _, ...rest }) => vc.validate(rest, ctx)),
+          E.map(x =>
+            Sum.deserialize(sum)([tag, x] as unknown as Sum.Serialized<A>),
+          ),
+        ),
+      flow(
+        Sum.serialize,
+        ([k, v]) =>
+          ({
+            [tagKey]: k,
+            ...vc.encode(v as ValueByTag<A, B>),
+          } as Record<K, B> & C),
+      ),
+    )
+
+/**
+ * Derive a codec for any given sum `A` provided codecs for all its members'
+ * values, decoding and encoding to an object with sibling member tags and
+ * values.
+ *
+ * Due to the distinct, isolated member tag, it's not possible for overlaps to
+ * occur.
+ *
+ * @example
+ * import * as t from "io-ts"
+ * import * as Sum from "@unsplash/sum-types"
+ * import { nullaryFromEmpty, getInternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import * as E from "fp-ts/Either"
+ *
+ * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
+ * const Weather = Sum.create<Weather>()
+ *
+ * const WeatherCodec = getInternallyTaggedCodec("tag")(Weather)({
+ *   Sun: nullaryFromEmpty,
+ *   Rain: t.strict({ mm: t.number }),
+ * })
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Sun" }),
+ *   E.right(Weather.mk.Sun),
+ * )
+ *
+ * assert.deepStrictEqual(
+ *   WeatherCodec.decode({ tag: "Rain", mm: 123 }),
+ *   E.right(Weather.mk.Rain({ mm: 123 })),
+ * )
+ *
+ * @since 0.7.0
+ */
+export const getInternallyTaggedCodec =
+  <K extends string>(tagKey: K) =>
+  <A extends Sum.AnyMember>(sum: Sum.Sum<A>) =>
+  <C extends MemberCodecs<A, Record<string, unknown> | null | undefined>>(
+    cs: C,
+    name = "Sum",
+  ): t.Type<A, InternallyTagged<K, A, C>> =>
+    foldToUnion<A>(([tag, codec]) =>
+      getInternallyTaggedMemberCodec(tagKey)(sum)(tag)(codec, name),
+    )(cs, name)
