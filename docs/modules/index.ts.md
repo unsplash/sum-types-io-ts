@@ -25,8 +25,8 @@ Added in v0.1.0
   - [getInternallyTaggedCodec](#getinternallytaggedcodec)
   - [getSerializedCodec](#getserializedcodec)
   - [getUntaggedCodec](#getuntaggedcodec)
-  - [nullary](#nullary)
   - [nullaryFrom](#nullaryfrom)
+  - [nullaryFromEmpty](#nullaryfromempty)
 
 ---
 
@@ -86,14 +86,14 @@ export declare const getAdjacentlyTaggedCodec: <K extends string>(
 ```ts
 import * as t from 'io-ts'
 import * as Sum from '@unsplash/sum-types'
-import { nullary, getAdjacentlyTaggedCodec } from '@unsplash/sum-types-io-ts'
+import { nullaryFromEmpty, getAdjacentlyTaggedCodec } from '@unsplash/sum-types-io-ts'
 import * as E from 'fp-ts/Either'
 
 type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', number>
 const Weather = Sum.create<Weather>()
 
 const WeatherCodec = getAdjacentlyTaggedCodec('tag')('value')(Weather)({
-  Sun: nullary,
+  Sun: nullaryFromEmpty,
   Rain: t.number,
 })
 
@@ -223,8 +223,6 @@ assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain)
 
 Added in v0.5.0
 
--
-
 ## getCodecFromSerialized
 
 Derive a codec for any given sum `A` provided codecs for all its members'
@@ -260,14 +258,14 @@ export declare const getExternallyTaggedCodec: <A extends Sum.AnyMember>(
 ```ts
 import * as t from 'io-ts'
 import * as Sum from '@unsplash/sum-types'
-import { nullary, getExternallyTaggedCodec } from '@unsplash/sum-types-io-ts'
+import { nullaryFromEmpty, getExternallyTaggedCodec } from '@unsplash/sum-types-io-ts'
 import * as E from 'fp-ts/Either'
 
 type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', number>
 const Weather = Sum.create<Weather>()
 
 const WeatherCodec = getExternallyTaggedCodec(Weather)({
-  Sun: nullary,
+  Sun: nullaryFromEmpty,
   Rain: t.number,
 })
 
@@ -305,14 +303,14 @@ export declare const getInternallyTaggedCodec: <K extends string>(
 ```ts
 import * as t from 'io-ts'
 import * as Sum from '@unsplash/sum-types'
-import { nullary, getInternallyTaggedCodec } from '@unsplash/sum-types-io-ts'
+import { nullaryFromEmpty, getInternallyTaggedCodec } from '@unsplash/sum-types-io-ts'
 import * as E from 'fp-ts/Either'
 
 type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', { mm: number }>
 const Weather = Sum.create<Weather>()
 
 const WeatherCodec = getInternallyTaggedCodec('tag')(Weather)({
-  Sun: nullary,
+  Sun: nullaryFromEmpty,
   Rain: t.strict({ mm: t.number }),
 })
 
@@ -359,7 +357,7 @@ export declare const getUntaggedCodec: <A extends Sum.AnyMember>(
 ```ts
 import * as t from 'io-ts'
 import * as Sum from '@unsplash/sum-types'
-import { nullary, getUntaggedCodec } from '@unsplash/sum-types-io-ts'
+import { nullaryFromEmpty, getUntaggedCodec } from '@unsplash/sum-types-io-ts'
 import * as E from 'fp-ts/Either'
 
 type Weather = Sum.Member<'Sun'> | Sum.Member<'Rain', { mm: number }>
@@ -368,7 +366,7 @@ const Weather = Sum.create<Weather>()
 const WeatherFromRainfall = getUntaggedCodec(Weather)({
   Rain: t.strict({ mm: t.number }),
   // This codec will match any object so it needs to come last.
-  Sun: nullary,
+  Sun: nullaryFromEmpty,
 })
 
 assert.deepStrictEqual(WeatherFromRainfall.decode({ mm: 123, foo: 'bar' }), E.right(Weather.mk.Rain({ mm: 123 })))
@@ -378,25 +376,11 @@ assert.deepStrictEqual(WeatherFromRainfall.decode({ foo: 'bar' }), E.right(Weath
 
 Added in v0.7.0
 
-## nullary
-
-A representation of nullary member values that encodes to `undefined` for
-better JSON interop, and decodes from `undefined`, `null`, or empty objects
-(i.e. any object).
-
-**Signature**
-
-```ts
-export declare const nullary: t.Type<null, Record<string, unknown> | null | undefined, unknown>
-```
-
-Added in v0.7.0
-
 ## nullaryFrom
 
 Derive a codec for nullary members to/from any other type. If the encoded
-representation is `null` or forming part of an object then `nullary` can be
-used instead.
+representation forms part of an object then `nullaryFromEmpty` can be used
+instead. Incompatible with `Serialized` if not encoding to `null`.
 
 **Signature**
 
@@ -411,8 +395,22 @@ import * as t from 'io-ts'
 import { nullaryFrom } from '@unsplash/sum-types-io-ts'
 
 // This will decode any object to null and encode to an empty object. Instead
-// consider `nullary`.
+// consider `nullaryFromEmpty`.
 nullaryFrom({})(t.type({}))
+```
+
+Added in v0.7.0
+
+## nullaryFromEmpty
+
+A representation of nullary member values that encodes to `undefined` for
+better JSON interop, and decodes from `undefined`, `null`, or empty objects
+(i.e. any object). Incompatible with `Serialized`.
+
+**Signature**
+
+```ts
+export declare const nullaryFromEmpty: t.Type<null, Record<string, unknown> | null | undefined, unknown>
 ```
 
 Added in v0.7.0

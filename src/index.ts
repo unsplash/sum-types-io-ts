@@ -122,15 +122,15 @@ const foldToUnion =
 
 /**
  * Derive a codec for nullary members to/from any other type. If the encoded
- * representation is `null` or forming part of an object then `nullary` can be
- * used instead.
+ * representation forms part of an object then `nullaryFromEmpty` can be used
+ * instead. Incompatible with `Serialized` if not encoding to `null`.
  *
  * @example
  * import * as t from "io-ts"
  * import { nullaryFrom } from "@unsplash/sum-types-io-ts"
  *
  * // This will decode any object to null and encode to an empty object. Instead
- * // consider `nullary`.
+ * // consider `nullaryFromEmpty`.
  * nullaryFrom({})(t.type({}))
  *
  * @since 0.7.0
@@ -148,14 +148,16 @@ export const nullaryFrom =
 /**
  * A representation of nullary member values that encodes to `undefined` for
  * better JSON interop, and decodes from `undefined`, `null`, or empty objects
- * (i.e. any object).
+ * (i.e. any object). Incompatible with `Serialized`.
  *
  * @since 0.7.0
  */
-export const nullary: t.Type<null, undefined | null | Record<string, unknown>> =
-  nullaryFrom<undefined | null | Record<string, unknown>>(undefined)(
-    t.union([t.undefined, t.null, t.type({})]),
-  )
+export const nullaryFromEmpty: t.Type<
+  null,
+  undefined | null | Record<string, unknown>
+> = nullaryFrom<undefined | null | Record<string, unknown>>(undefined)(
+  t.union([t.undefined, t.null, t.type({})]),
+)
 
 /**
  * Derive a codec for `Serialized<A>` for any given sum `A` provided codecs for
@@ -435,14 +437,14 @@ const getExternallyTaggedMemberCodec =
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { nullary, getExternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import { nullaryFromEmpty, getExternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", number>
  * const Weather = Sum.create<Weather>()
  *
  * const WeatherCodec = getExternallyTaggedCodec(Weather)({
- *   Sun: nullary,
+ *   Sun: nullaryFromEmpty,
  *   Rain: t.number,
  * })
  *
@@ -534,14 +536,14 @@ const getAdjacentlyTaggedMemberCodec =
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { nullary, getAdjacentlyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import { nullaryFromEmpty, getAdjacentlyTaggedCodec } from "@unsplash/sum-types-io-ts"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", number>
  * const Weather = Sum.create<Weather>()
  *
  * const WeatherCodec = getAdjacentlyTaggedCodec("tag")("value")(Weather)({
- *   Sun: nullary,
+ *   Sun: nullaryFromEmpty,
  *   Rain: t.number,
  * })
  *
@@ -615,7 +617,7 @@ const getUntaggedMemberCodec =
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { nullary, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import { nullaryFromEmpty, getUntaggedCodec } from "@unsplash/sum-types-io-ts"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
@@ -624,7 +626,7 @@ const getUntaggedMemberCodec =
  * const WeatherFromRainfall = getUntaggedCodec(Weather)({
  *   Rain: t.strict({ mm: t.number }),
  *   // This codec will match any object so it needs to come last.
- *   Sun: nullary,
+ *   Sun: nullaryFromEmpty,
  * })
  *
  * assert.deepStrictEqual(
@@ -707,14 +709,14 @@ const getInternallyTaggedMemberCodec =
  * @example
  * import * as t from "io-ts"
  * import * as Sum from "@unsplash/sum-types"
- * import { nullary, getInternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
+ * import { nullaryFromEmpty, getInternallyTaggedCodec } from "@unsplash/sum-types-io-ts"
  * import * as E from "fp-ts/Either"
  *
  * type Weather = Sum.Member<"Sun"> | Sum.Member<"Rain", { mm: number }>
  * const Weather = Sum.create<Weather>()
  *
  * const WeatherCodec = getInternallyTaggedCodec("tag")(Weather)({
- *   Sun: nullary,
+ *   Sun: nullaryFromEmpty,
  *   Rain: t.strict({ mm: t.number }),
  * })
  *

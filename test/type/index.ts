@@ -9,7 +9,7 @@ import {
   getInternallyTaggedCodec,
   getExternallyTaggedCodec,
   getAdjacentlyTaggedCodec,
-  nullary,
+  nullaryFromEmpty,
 } from "../../src/index"
 import * as t from "io-ts"
 import { constant } from "fp-ts/function"
@@ -47,7 +47,7 @@ getCodecFromNullaryTag(B)(["B1", "B2"]) // $ExpectType Type<B, string, unknown>
 type C = Sum.Member<"C1"> | Sum.Member<"C2", { readonly k: number }>
 const C = Sum.create<C>()
 
-const c1 = nullary
+const c1 = nullaryFromEmpty
 const c2 = t.strict({ k: NumberFromString })
 
 getUntaggedCodec(C)({ C2: c2, C1: c1 }) // $ExpectType Type<C, Record<string, unknown> | { k: string; } | null | undefined, unknown>

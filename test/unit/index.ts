@@ -13,7 +13,7 @@ import {
   getExternallyTaggedCodec,
   getInternallyTaggedCodec,
   getAdjacentlyTaggedCodec,
-  nullary,
+  nullaryFromEmpty,
   nullaryFrom,
 } from "../../src/index"
 import * as t from "io-ts"
@@ -520,7 +520,7 @@ describe("index", () => {
     it("requires key to be present even if nullary", () => {
       type T = Sum.Member<"A">
       const T = Sum.create<T>()
-      const c = getExternallyTaggedCodec(T)({ A: nullary })
+      const c = getExternallyTaggedCodec(T)({ A: nullaryFromEmpty })
 
       expect(E.isLeft(c.decode({}))).toBe(true)
     })
@@ -547,7 +547,7 @@ describe("index", () => {
     } = T
 
     const c = getInternallyTaggedCodec("tag")(T)({
-      A: nullary,
+      A: nullaryFromEmpty,
       B: t.strict({ foo: NumberFromString }),
     })
 
@@ -605,7 +605,7 @@ describe("index", () => {
       expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
       expect(cn.encode(T.mk.A)).toEqual({ tag: "A" })
 
-      const cx = c({ A: nullary })
+      const cx = c({ A: nullaryFromEmpty })
       expect(cx.decode({ tag: "A" })).toEqual(E.right(T.mk.A))
       expect(cx.decode({ tag: "A", foo: "bar" })).toEqual(E.right(T.mk.A))
       expect(cx.encode(T.mk.A)).not.toStrictEqual({
@@ -687,7 +687,7 @@ describe("index", () => {
       expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
       expect(cn.encode(T.mk.A)).toEqual({ tag: "A", value: null })
 
-      const cu = c({ A: nullary })
+      const cu = c({ A: nullaryFromEmpty })
       expect(
         cu.decode({
           tag: "A",
@@ -704,7 +704,7 @@ describe("index", () => {
       const MaybeNum = Sum.create<Maybe<number>>()
       const c = getAdjacentlyTaggedCodec("_tag")("value")(MaybeNum)({
         Some: t.number,
-        None: nullary,
+        None: nullaryFromEmpty,
       })
 
       expect(c.decode(O.some(123))).toEqual(E.right(MaybeNum.mk.Some(123)))
