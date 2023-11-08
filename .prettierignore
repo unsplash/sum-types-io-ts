@@ -1,5 +1,5 @@
+.direnv/
 node_modules/
 dist/
 coverage/
 docs/
-
