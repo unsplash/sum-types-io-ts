@@ -540,7 +540,9 @@ describe("index", () => {
   })
 
   describe("getInternallyTaggedCodec", () => {
-    type T = Sum.Member<"A"> | Sum.Member<"B", { readonly foo: number }>
+    type T =
+      | Sum.Member<"A">
+      | Sum.Member<"B", { readonly tag: "B"; readonly foo: number }>
     const T = Sum.create<T>()
     const {
       mk: { A, B },
@@ -548,12 +550,12 @@ describe("index", () => {
 
     const c = getInternallyTaggedCodec("tag")(T)({
       A: nullaryFromEmpty,
-      B: t.strict({ foo: NumberFromString }),
+      B: t.strict({ tag: t.literal("B"), foo: NumberFromString }),
     })
 
     it("type guards", () => {
       expect(c.is(A)).toBe(true)
-      expect(c.is(B({ foo: 123 }))).toBe(true)
+      expect(c.is(B({ tag: "B", foo: 123 }))).toBe(true)
 
       expect(c.is("A")).toBe(false)
       expect(c.is("B")).toBe(false)
@@ -566,7 +568,10 @@ describe("index", () => {
 
     it("encodes", () => {
       expect(c.encode(A)).toEqual({ tag: "A" })
-      expect(c.encode(B({ foo: 123 }))).toEqual({ tag: "B", foo: "123" })
+      expect(c.encode(B({ tag: "B", foo: 123 }))).toEqual({
+        tag: "B",
+        foo: "123",
+      })
     })
 
     it("does not decode bad inputs", () => {
@@ -576,7 +581,7 @@ describe("index", () => {
       expect(f("A")).toBe(true)
       expect(f("B")).toBe(true)
       expect(f(A)).toBe(true)
-      expect(f(B({ foo: 123 }))).toBe(true)
+      expect(f(B({ tag: "B", foo: 123 }))).toBe(true)
       expect(f({})).toBe(true)
       expect(f(false)).toBe(true)
       expect(f("123")).toBe(true)
@@ -589,7 +594,7 @@ describe("index", () => {
       fc.assert(
         fc.property(fc.integer({ min: 0 }), n =>
           expect(c.decode({ tag: "B", foo: String(n) })).toEqual(
-            E.right(B({ foo: n })),
+            E.right(B({ tag: "B", foo: n })),
           ),
         ),
       )
