@@ -595,6 +595,20 @@ describe("index", () => {
       )
     })
 
+    it("preserves tag after decode", () => {
+      type T = Sum.Member<"B", { readonly tag: "B" }>
+      const T = Sum.create<T>()
+      const {
+        mk: { B },
+      } = T
+
+      const c = getInternallyTaggedCodec("tag")(T)({
+        B: t.strict({ tag: t.literal("B") }),
+      })
+
+      expect(c.decode({ tag: "B" })).toEqual(E.right(B({ tag: "B" })))
+    })
+
     // This is partially for documentative purposes.
     it("handles different nullary encodings", () => {
       type T = Sum.Member<"A">

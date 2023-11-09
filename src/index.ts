@@ -682,8 +682,7 @@ const getInternallyTaggedMemberCodec =
       (i, ctx) =>
         pipe(
           t.type({ [tagKey]: t.literal(tag) }).validate(i, ctx),
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          E.chain(({ [tagKey]: _, ...rest }) => vc.validate(rest, ctx)),
+          E.chain(x => vc.validate(x, ctx)),
           E.map(x =>
             Sum.deserialize(sum)([tag, x] as unknown as Sum.Serialized<A>),
           ),
