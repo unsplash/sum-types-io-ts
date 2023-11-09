@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 0.7.1 (2023-10-09)
+
+Update `getInternallyTaggedCodec` to preserve tag when decoding.
+
 ## 0.7.0 (2023-08-11)
 
 Add `getAdjacentlyTaggedCodec`, `getExternallyTaggedCodec`, `getInternallyTaggedCodec`, and `getUntaggedCodec` codec constructors for working with object encodings. Add `nullaryFrom` and `nullaryFromEmpty` to support said object encodings with optional member values.
