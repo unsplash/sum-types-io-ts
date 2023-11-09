@@ -16,7 +16,7 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = [
+          nativeBuildInputs = [
             pkgs.nodejs
             pkgs.yarn
           ];
