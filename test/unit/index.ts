@@ -52,7 +52,7 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(pipe(B, Sum.serialize, f.is)).toBe(true)
+      expect(pipe(B(null), Sum.serialize, f.is)).toBe(true)
 
       fc.assert(
         fc.property(fc.integer(), flow(mkNested, C, Sum.serialize, f.is)),
@@ -60,7 +60,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(pipe(B, Sum.serialize, f.encode)).toEqual(["B", null])
+      expect(pipe(B(null), Sum.serialize, f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), x =>
@@ -134,13 +134,13 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(pipe(B, f.is)).toBe(true)
+      expect(pipe(B(null), f.is)).toBe(true)
 
       fc.assert(fc.property(fc.integer(), flow(mkNested, C, f.is)))
     })
 
     it("encodes", () => {
-      expect(pipe(B, f.encode)).toEqual(["B", null])
+      expect(pipe(B(null), f.encode)).toEqual(["B", null])
 
       fc.assert(
         fc.property(fc.integer(), x =>
@@ -164,7 +164,7 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      const mx = f.decode(pipe(B, Sum.serialize))
+      const mx = f.decode(pipe(B(null), Sum.serialize))
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
       expect(Sum.serialize(x)).toEqual(["B", null])
@@ -188,13 +188,13 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(pipe(B, f.is)).toBe(true)
+      expect(pipe(B(null), f.is)).toBe(true)
 
       fc.assert(fc.property(fc.integer(), flow(mkNested, C, f.is)))
     })
 
     it("encodes", () => {
-      const x = f.encode(B)
+      const x = f.encode(B(null))
       expect(Sum.serialize(x)).toEqual(["B", null])
 
       fc.assert(
@@ -227,7 +227,7 @@ describe("index", () => {
     })
 
     it("decodes good key/value pairs", () => {
-      const mx = f.decode(B)
+      const mx = f.decode(B(null))
       expect(E.isRight(mx)).toBe(true)
       const x = (mx as E.Right<S>).right
       expect(Sum.serialize(x)).toEqual(["B", null])
@@ -252,14 +252,14 @@ describe("index", () => {
     )(["NA", "NB"])
 
     it("type guards", () => {
-      expect(c.is(NA)).toBe(true)
+      expect(c.is(NA(null))).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA)).toEqual(1)
-      expect(c.encode(NB)).toEqual(2)
+      expect(c.encode(NA(null))).toEqual(1)
+      expect(c.encode(NB(null))).toEqual(2)
     })
 
     it("does not decode tag, ignoring transformation function", () => {
@@ -302,14 +302,14 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(NA)).toBe(true)
+      expect(c.is(NA(null))).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA)).toEqual("1")
-      expect(c.encode(NB)).toEqual(2)
+      expect(c.encode(NA(null))).toEqual("1")
+      expect(c.encode(NB(null))).toEqual(2)
     })
 
     it("does not decode tag, ignoring transformation function", () => {
@@ -342,14 +342,14 @@ describe("index", () => {
     const c = getCodecFromNullaryTag(NS)(["NA", "NB"])
 
     it("type guards", () => {
-      expect(c.is(NA)).toBe(true)
+      expect(c.is(NA(null))).toBe(true)
       expect(c.is("NA")).toBe(false)
       expect(c.is({})).toBe(false)
     })
 
     it("encodes", () => {
-      expect(c.encode(NA)).toEqual("NA")
-      expect(c.encode(NB)).toEqual("NB")
+      expect(c.encode(NA(null))).toEqual("NA")
+      expect(c.encode(NB(null))).toEqual("NB")
     })
 
     it("does not decode unknown tag", () => {
@@ -384,7 +384,7 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(A)).toBe(true)
+      expect(c.is(A(null))).toBe(true)
       expect(c.is(B(123))).toBe(true)
 
       expect(c.is("A")).toBe(false)
@@ -398,7 +398,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(c.encode(A)).toBe(false)
+      expect(c.encode(A(null))).toBe(false)
       expect(c.encode(B(123))).toEqual("123")
     })
 
@@ -417,7 +417,7 @@ describe("index", () => {
     })
 
     it("decodes good inputs", () => {
-      expect(c.decode(false)).toEqual(E.right(A))
+      expect(c.decode(false)).toEqual(E.right(A(null)))
 
       fc.assert(
         fc.property(fc.integer({ min: 0 }), n =>
@@ -449,8 +449,12 @@ describe("index", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       const f = flow(getUntaggedCodec(T), x => x.decode)
 
-      expect(f({ N1: nc, N2: nc, ...ucs })(false)).toEqual(E.right(T.mk.N1))
-      expect(f({ N2: nc, N1: nc, ...ucs })(false)).toEqual(E.right(T.mk.N2))
+      expect(f({ N1: nc, N2: nc, ...ucs })(false)).toEqual(
+        E.right(T.mk.N1(null)),
+      )
+      expect(f({ N2: nc, N1: nc, ...ucs })(false)).toEqual(
+        E.right(T.mk.N2(null)),
+      )
       expect(f({ U1: uc, U2: uc, ...ncs })("123")).toEqual(
         E.right(T.mk.U1(123)),
       )
@@ -476,7 +480,7 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(A)).toBe(true)
+      expect(c.is(A(null))).toBe(true)
       expect(c.is(B(123))).toBe(true)
 
       expect(c.is("A")).toBe(false)
@@ -490,7 +494,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(c.encode(A)).toEqual({ A: false })
+      expect(c.encode(A(null))).toEqual({ A: false })
       expect(c.encode(B(123))).toEqual({ B: "123" })
     })
 
@@ -508,7 +512,7 @@ describe("index", () => {
     })
 
     it("decodes good inputs", () => {
-      expect(c.decode({ A: false })).toEqual(E.right(A))
+      expect(c.decode({ A: false })).toEqual(E.right(A(null)))
 
       fc.assert(
         fc.property(fc.integer({ min: 0 }), n =>
@@ -534,7 +538,7 @@ describe("index", () => {
 
       const both = { A: false, B: "123" }
 
-      expect(f({ A: a, B: b })(both)).toEqual(E.right(T.mk.A))
+      expect(f({ A: a, B: b })(both)).toEqual(E.right(T.mk.A(null)))
       expect(f({ B: b, A: a })(both)).toEqual(E.right(T.mk.B(123)))
     })
   })
@@ -552,7 +556,7 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(A)).toBe(true)
+      expect(c.is(A(null))).toBe(true)
       expect(c.is(B({ foo: 123 }))).toBe(true)
 
       expect(c.is("A")).toBe(false)
@@ -565,7 +569,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(c.encode(A)).toEqual({ tag: "A" })
+      expect(c.encode(A(null))).toEqual({ tag: "A" })
       expect(c.encode(B({ foo: 123 }))).toEqual({ tag: "B", foo: "123" })
     })
 
@@ -584,7 +588,7 @@ describe("index", () => {
     })
 
     it("decodes good inputs", () => {
-      expect(c.decode({ tag: "A" })).toEqual(E.right(A))
+      expect(c.decode({ tag: "A" })).toEqual(E.right(A(null)))
 
       fc.assert(
         fc.property(fc.integer({ min: 0 }), n =>
@@ -616,17 +620,17 @@ describe("index", () => {
       const c = getInternallyTaggedCodec("tag")(T)
 
       const cn = c({ A: t.null })
-      expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
-      expect(cn.encode(T.mk.A)).toEqual({ tag: "A" })
+      expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A(null)))
+      expect(cn.encode(T.mk.A(null))).toEqual({ tag: "A" })
 
       const cx = c({ A: nullaryFromEmpty })
-      expect(cx.decode({ tag: "A" })).toEqual(E.right(T.mk.A))
-      expect(cx.decode({ tag: "A", foo: "bar" })).toEqual(E.right(T.mk.A))
-      expect(cx.encode(T.mk.A)).not.toStrictEqual({
+      expect(cx.decode({ tag: "A" })).toEqual(E.right(T.mk.A(null)))
+      expect(cx.decode({ tag: "A", foo: "bar" })).toEqual(E.right(T.mk.A(null)))
+      expect(cx.encode(T.mk.A(null))).not.toStrictEqual({
         tag: "A",
         value: undefined,
       })
-      expect(cx.encode(T.mk.A)).toStrictEqual({ tag: "A" })
+      expect(cx.encode(T.mk.A(null))).toStrictEqual({ tag: "A" })
     })
   })
 
@@ -646,7 +650,7 @@ describe("index", () => {
     })
 
     it("type guards", () => {
-      expect(c.is(A)).toBe(true)
+      expect(c.is(A(null))).toBe(true)
       expect(c.is(B(123))).toBe(true)
 
       expect(c.is("A")).toBe(false)
@@ -659,7 +663,7 @@ describe("index", () => {
     })
 
     it("encodes", () => {
-      expect(c.encode(A)).toEqual({ tag: "A", value: false })
+      expect(c.encode(A(null))).toEqual({ tag: "A", value: false })
       expect(c.encode(B(123))).toEqual({ tag: "B", value: "123" })
     })
 
@@ -679,7 +683,7 @@ describe("index", () => {
     })
 
     it("decodes good inputs", () => {
-      expect(c.decode({ tag: "A", value: false })).toEqual(E.right(A))
+      expect(c.decode({ tag: "A", value: false })).toEqual(E.right(A(null)))
 
       fc.assert(
         fc.property(fc.integer({ min: 0 }), n =>
@@ -697,9 +701,11 @@ describe("index", () => {
       const c = getAdjacentlyTaggedCodec("tag")("value")(T)
 
       const cn = c({ A: t.null })
-      expect(cn.decode({ tag: "A", value: null })).toEqual(E.right(T.mk.A))
-      expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A))
-      expect(cn.encode(T.mk.A)).toEqual({ tag: "A", value: null })
+      expect(cn.decode({ tag: "A", value: null })).toEqual(
+        E.right(T.mk.A(null)),
+      )
+      expect(cn.decode({ tag: "A" })).not.toEqual(E.right(T.mk.A(null)))
+      expect(cn.encode(T.mk.A(null))).toEqual({ tag: "A", value: null })
 
       const cu = c({ A: nullaryFromEmpty })
       expect(
@@ -707,10 +713,13 @@ describe("index", () => {
           tag: "A",
           value: undefined,
         }),
-      ).toEqual(E.right(T.mk.A))
-      expect(cu.decode({ tag: "A" })).toEqual(E.right(T.mk.A))
-      expect(cu.encode(T.mk.A)).not.toStrictEqual({ tag: "A" })
-      expect(cu.encode(T.mk.A)).toStrictEqual({ tag: "A", value: undefined })
+      ).toEqual(E.right(T.mk.A(null)))
+      expect(cu.decode({ tag: "A" })).toEqual(E.right(T.mk.A(null)))
+      expect(cu.encode(T.mk.A(null))).not.toStrictEqual({ tag: "A" })
+      expect(cu.encode(T.mk.A(null))).toStrictEqual({
+        tag: "A",
+        value: undefined,
+      })
     })
 
     it("interops with fp-ts encodings", () => {
@@ -722,7 +731,7 @@ describe("index", () => {
       })
 
       expect(c.decode(O.some(123))).toEqual(E.right(MaybeNum.mk.Some(123)))
-      expect(c.decode(O.none)).toEqual(E.right(MaybeNum.mk.None))
+      expect(c.decode(O.none)).toEqual(E.right(MaybeNum.mk.None(null)))
     })
   })
 })

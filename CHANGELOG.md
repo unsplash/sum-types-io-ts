@@ -2,6 +2,10 @@
 
 This project adheres to semantic versioning.
 
+## 1.0.0 (2025-07-22)
+
+Support `@unsplash/sum-types` ^1.0.1.
+
 ## 0.7.1 (2023-10-09)
 
 Update `getInternallyTaggedCodec` to preserve tag when decoding.
