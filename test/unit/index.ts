@@ -1,5 +1,3 @@
-/* eslint-disable functional/functional-parameters */
-
 import fc from "fast-check"
 import * as Sum from "@unsplash/sum-types"
 import {
