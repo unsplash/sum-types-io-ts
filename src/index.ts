@@ -2,7 +2,7 @@
  * @since 0.1.0
  */
 
-/* eslint-disable functional/functional-parameters, functional/prefer-readonly-type, @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method */
 
 import * as Sum from "@unsplash/sum-types"
 import { constant, flow, pipe } from "fp-ts/function"
@@ -95,7 +95,14 @@ const union1 = <A extends [t.Mixed, ...Array<t.Mixed>]>(
         xs,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ) as any)
-    : t.union(xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>], name)
+    : (t.union(
+        xs as unknown as [t.Mixed, t.Mixed, ...Array<t.Mixed>],
+        name,
+      ) as unknown as t.UnionType<
+        A,
+        t.TypeOf<A[number]>,
+        t.OutputOf<A[number]>
+      >)
 
 /**
  * Fold a `MemberCodecs` struct to a union codec from left to right.
@@ -260,7 +267,7 @@ export const getCodec =
  *     (x): Country => (x === "Sun" ? "Italy" : "UK"),
  *   )(["Sun", "Rain"])
  *
- * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain(null)))
  *
  * @since 0.3.0
  */
@@ -304,8 +311,7 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
   /**
    * @since 0.5.1
    */
-  readonly _tag: "@unsplash/sum-types-io-ts/MappedType" =
-    "@unsplash/sum-types-io-ts/MappedType"
+  readonly _tag = "@unsplash/sum-types-io-ts/MappedType" as const
   constructor(
     name: string,
     is: MappedType<A, B>["is"],
@@ -335,7 +341,7 @@ export class MappedType<A, B> extends t.Type<A, B, unknown> {
  * const WeatherFromCountry: t.Type<Weather, Country> =
  *   getCodecFromPrimitiveMappedNullaryTag(Weather)({ Sun: "Italy", Rain: "UK" })
  *
- * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain))
+ * assert.deepStrictEqual(WeatherFromCountry.decode("UK"), E.right(Weather.mk.Rain(null)))
  *
  * @since 0.5.0
  */
@@ -450,7 +456,7 @@ const getExternallyTaggedMemberCodec =
  *
  * assert.deepStrictEqual(
  *   WeatherCodec.decode({ Sun: undefined }),
- *   E.right(Weather.mk.Sun),
+ *   E.right(Weather.mk.Sun(null)),
  * )
  *
  * assert.deepStrictEqual(
@@ -549,7 +555,7 @@ const getAdjacentlyTaggedMemberCodec =
  *
  * assert.deepStrictEqual(
  *   WeatherCodec.decode({ tag: "Sun" }),
- *   E.right(Weather.mk.Sun),
+ *   E.right(Weather.mk.Sun(null)),
  * )
  *
  * assert.deepStrictEqual(
@@ -636,7 +642,7 @@ const getUntaggedMemberCodec =
  *
  * assert.deepStrictEqual(
  *   WeatherFromRainfall.decode({ foo: 'bar' }),
- *   E.right(Weather.mk.Sun),
+ *   E.right(Weather.mk.Sun(null)),
  * )
  *
  * @since 0.7.0
@@ -721,7 +727,7 @@ const getInternallyTaggedMemberCodec =
  *
  * assert.deepStrictEqual(
  *   WeatherCodec.decode({ tag: "Sun" }),
- *   E.right(Weather.mk.Sun),
+ *   E.right(Weather.mk.Sun(null)),
  * )
  *
  * assert.deepStrictEqual(

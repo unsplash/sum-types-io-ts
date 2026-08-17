@@ -97,7 +97,7 @@ const WeatherCodec = getAdjacentlyTaggedCodec('tag')('value')(Weather)({
   Rain: t.number,
 })
 
-assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun(null)))
 
 assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Rain', value: 123 }), E.right(Weather.mk.Rain(123)))
 ```
@@ -164,7 +164,7 @@ const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromMappedNullaryTa
   (x): Country => (x === 'Sun' ? 'Italy' : 'UK')
 )(['Sun', 'Rain'])
 
-assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain))
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain(null)))
 ```
 
 Added in v0.3.0
@@ -218,7 +218,7 @@ const WeatherFromCountry: t.Type<Weather, Country> = getCodecFromPrimitiveMapped
   Rain: 'UK',
 })
 
-assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain))
+assert.deepStrictEqual(WeatherFromCountry.decode('UK'), E.right(Weather.mk.Rain(null)))
 ```
 
 Added in v0.5.0
@@ -269,7 +269,7 @@ const WeatherCodec = getExternallyTaggedCodec(Weather)({
   Rain: t.number,
 })
 
-assert.deepStrictEqual(WeatherCodec.decode({ Sun: undefined }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherCodec.decode({ Sun: undefined }), E.right(Weather.mk.Sun(null)))
 
 assert.deepStrictEqual(WeatherCodec.decode({ Rain: 123 }), E.right(Weather.mk.Rain(123)))
 ```
@@ -314,7 +314,7 @@ const WeatherCodec = getInternallyTaggedCodec('tag')(Weather)({
   Rain: t.strict({ mm: t.number }),
 })
 
-assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Sun' }), E.right(Weather.mk.Sun(null)))
 
 assert.deepStrictEqual(WeatherCodec.decode({ tag: 'Rain', mm: 123 }), E.right(Weather.mk.Rain({ mm: 123 })))
 ```
@@ -371,7 +371,7 @@ const WeatherFromRainfall = getUntaggedCodec(Weather)({
 
 assert.deepStrictEqual(WeatherFromRainfall.decode({ mm: 123, foo: 'bar' }), E.right(Weather.mk.Rain({ mm: 123 })))
 
-assert.deepStrictEqual(WeatherFromRainfall.decode({ foo: 'bar' }), E.right(Weather.mk.Sun))
+assert.deepStrictEqual(WeatherFromRainfall.decode({ foo: 'bar' }), E.right(Weather.mk.Sun(null)))
 ```
 
 Added in v0.7.0
